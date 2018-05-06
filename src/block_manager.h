@@ -122,7 +122,8 @@ class block_manager {
      */
     template<typename T>
     void free(pointer<block_list<T>> p_head) {
-
+        if(p_head.isnull()) return;
+        
         pointer<block_node> p_tail(p_head);
         while(!p_tail->next.isnull()) p_tail=p_tail->next;
 

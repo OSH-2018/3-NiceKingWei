@@ -12,7 +12,13 @@
  */
 struct static_string{
     size_t n;
+
+    bool is_del(){
+        return n==SIZE_MAX;
+    }
+
     char* str(){
+        assert(!is_del());
         return (char*)(this+1);
     }
 
@@ -20,9 +26,6 @@ struct static_string{
         n = SIZE_MAX;
     }
 
-    bool is_del(){
-        return n==SIZE_MAX;
-    }
 };
 
 

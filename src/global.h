@@ -109,14 +109,14 @@ struct pointer {
 struct utils{
     inline static std::string path_get_parent(const std::string& s){
         std::string ss = s;
-        if(!ss.empty() && ss.back()=='/') ss.pop_back();
         while(!ss.empty() && ss.back()!='/') ss.pop_back();
+        if(ss!="/") ss.pop_back();
         return ss;
     }
 
     inline static bool path_is_valid(const std::string& s){
         const char* reg = "^(/[^/ ]*)+/?$";
-        return std::regex_match(s,std::regex(reg));
+        return std::regex_match(s,std::regex(reg)) && s.back()!='/';
     }
 };
 

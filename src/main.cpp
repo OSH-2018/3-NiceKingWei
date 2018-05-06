@@ -20,17 +20,17 @@ static void* fs_init(struct fuse_conn_info *conn) {
  */
 static int fs_getattr(const char* path, struct stat* stbuf) {
 
-    logger.write("[get attr]",path);
+//    logger.write("[get attr]",path);
 
     memset(stbuf, 0, sizeof(struct stat));
 
     auto file = manager.file_find(path).file;
 
     if(file.isnull()){
-        logger.write("[get attr]","null");
+//        logger.write("[get attr]","null");
         return -ENOENT;
     } else {
-        logger.write("[get attr]","found");
+//        logger.write("[get attr]","found");
         *stbuf = file->attr;
         return 0;
     }
@@ -65,15 +65,11 @@ static int fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 
     for(auto& file:files){
         const char* fn = file->filename->str() + n;
-        std::string s;
-        if(file->file->is_dir()){
-            s = fn;
-            s.pop_back();
-            fn = s.c_str();
-        }
+        if(*fn=='/') fn++;
         filler(buf, fn , &file->file->attr, 0);
     }
 
+    logger.write("[read dir]","succeed");
     return 0;
 }
 
@@ -125,11 +121,10 @@ static int fs_open(const char *path, struct fuse_file_info *fi) {
     }else{
         if(file->is_dir()){
             return -EACCES;
-        }else{
-            logger.write("[open]","succeed");
-            return 0;
         }
     }
+    logger.write("[open]","succeed");
+    return 0;
 }
 
 
@@ -174,10 +169,10 @@ static int fs_read(const char *path, char *buf, size_t size, off_t offset, struc
                 write_buf += n;
             }
             return (int)(len-offset);
-        }else{
-            return 0;
         }
     }
+    logger.write("[read]","succeed");
+    return 0;
 }
 
 
@@ -222,6 +217,7 @@ static int fs_write(const char *path, const char *buf, size_t size, off_t offset
     }
     file->attr.st_size = offset + size;
     file->attr.st_blocks = file->block->count();
+    logger.write("[write]","succeed");
     return (int)size;
 }
 
@@ -247,10 +243,11 @@ static int fs_truncate(const char *path, off_t size) {
         }
 
         file->attr.st_size = size;
-//        file->attr.st_blocks = file->block->count();
+        file->attr.st_blocks = file->block->count();
     }catch(std::bad_alloc&){
         return -ENOSPC;
     }
+    logger.write("[truncate]","succeed");
     return 0;
 }
 
@@ -261,10 +258,54 @@ static int fs_truncate(const char *path, off_t size) {
  */
 static int fs_unlink(const char *path) {
     logger.write("[unlink]",path);
-    if(manager.file_remove(path)) return 0;
-    else return -ENOENT;
+    if(!manager.file_remove(path)) return -ENOENT;
+    logger.write("[unlink]","succeed");
+    return 0;
 }
 
+
+/**
+ * rename
+ */
+static int fs_rename(const char * old_name, const char *new_name){
+    logger.write("[rename]",old_name,new_name);
+    auto file = manager.file_find(old_name).file;
+    if(file.isnull() || file->is_dir()) return -ENOENT;
+    try {
+        auto ret = fs_mknod(new_name,0,0);
+        if(ret) return ret;
+
+        auto new_file = manager.file_find(new_name).file;
+        assert(!new_file.isnull());
+
+        new_file->attr = file->attr;
+        new_file->block = file->block;
+
+        file->block = null_pointer;
+        manager.file_remove(old_name);
+
+    }catch(std::bad_alloc&){
+        return -ENOSPC;
+    }
+    logger.write("[rename]","succeed");
+    return 0;
+}
+
+
+/**
+ * rmdir
+ */
+static int fs_rmdir (const char * dirname){
+    logger.write("[rmdir]",dirname);
+    if(std::string(dirname) == "/") return 0;
+    auto dir = manager.file_find(dirname).file;
+    if(dir.isnull() || !dir->is_dir()) return -ENOENT;
+    auto file = manager.dir_list(dirname);
+    if(!file.empty()) return -EPERM;
+    manager.file_remove(dirname);
+    logger.write("[rmdir]","succeed");
+    return 0;
+}
 
 
 /**
@@ -274,8 +315,6 @@ struct fuse_operations memfs_operations;
 #define regfun(fun) memfs_operations.fun = fs_##fun;
 
 
-// int (*rename) (const char *, const char *); rename a file
-//int (*rmdir) (const char *);
 
 int main(int argc, char* argv[]) {
     regfun(init);
@@ -288,26 +327,44 @@ int main(int argc, char* argv[]) {
     regfun(read);
     regfun(truncate);
     regfun(unlink);
-//    regfun(rmdir);
+    regfun(rename);
+    regfun(rmdir);
     logger.write("[main]");
-
 #ifdef DEBUG
-    // test
     fs_init(nullptr);
     struct stat x;
-    fs_getattr("/",&x);
-    fs_getattr("/.Trash",&x);
-    fs_mknod("/sky",O_RDWR,0);
-    fs_open("/sky", nullptr);
-    char buf[] = "skysissi, I love you!\n";
+
+    // test0
     char read[64];
-    fs_write("/sky",buf, sizeof(buf),0, nullptr);
-    fs_read("/sky",read, sizeof(buf),0, nullptr);
-    std::cout<<buf;
-    fs_unlink("/sky");
-    fs_getattr("/sky",&x);
+    char buf[] = "skysissi, I love you!\n";
+
+/*    fs_getattr("/",&x);
+    fs_getattr("/.Trash",&x);
     fs_mkdir("/x",0);
+    fs_mknod("/x/sky",O_RDWR,0);
     fs_mkdir("/x/y",0);
+    fs_rmdir("/x/y");
+    fs_mknod("/x/nice",O_RDWR,0);
+    fs_unlink("/x/nice");
+    fs_open("/x/sky", nullptr);
+    fs_write("/x/sky",buf, sizeof(buf),0, nullptr);
+    fs_rename("/x/sky","/skysissi");
+    fs_read("/skysissi",read, sizeof(buf),0, nullptr);
+    std::cout<<buf;
+    fs_unlink("/skysissi");
+    fs_getattr("/skysissi",&x);
+    fs_mkdir("/x/y",0);*/
+
+    // test2
+    fs_mkdir("/dir1",0);
+    fs_mkdir("/dir1/dir11",0);
+    fs_mknod("/dir1/x",0,0);
+    fs_write("/dir1/x",buf, sizeof(buf),0, nullptr);
+    fs_read("/dir/x",read, sizeof(buf),0, nullptr);
+    std::cout<<buf;
+    fs_rmdir("/dir1/dir11");
+    fs_unlink("/dir1/x");
+    fs_rmdir("/dir1");
 #else
     return fuse_main(argc, argv, &memfs_operations, nullptr);
 #endif

@@ -155,13 +155,13 @@ bool block_manager::file_remove(const char* filename) {
     file_find_interval(filename,pre_list);
 
     bool succ = false;
-    for(int i=0;i<MAX_DEPTH;i++){
-        pointer<skipnode> pre = pre_list[0];
+    pointer<static_string> to_del_filename = null_pointer;
+    for(auto& pre : pre_list) {
         auto to_del = pre->next;
         if(EQ(to_del,filename)){
             if(!succ){
                 // delete filename and filenode
-                to_del->filename->del();
+                to_del_filename = to_del->filename;
                 free(to_del->file->block);
                 to_del->file->del();
             }
@@ -171,6 +171,8 @@ bool block_manager::file_remove(const char* filename) {
             to_del->del();
         }
     }
+    to_del_filename->del();
+
     return succ;
 }
 
@@ -187,9 +189,11 @@ std::list<pointer<skipnode>> block_manager::dir_list(const char *dirname) {
     if(dir.file.isnull())
         return ret;
 
-    auto prefix_s = dir.filename->str();
-    auto prefix_n = dir.filename->n;
-
+    // generate prefix
+    std::string prefix = dir.filename->str();
+    while (!prefix.empty() && prefix.back()=='/') prefix.pop_back();
+    prefix.push_back('/');
+    size_t prefix_n = prefix.size();
 
     for(auto file=dir.next;!file.isnull();file=file->next){
         auto fn_s = file->filename->str();
@@ -202,12 +206,13 @@ std::list<pointer<skipnode>> block_manager::dir_list(const char *dirname) {
             leave_dir = true;
         }else{
             for(int i=0;i<prefix_n;i++){
-                if(fn_s[i]!=prefix_s[i]){
+                if(fn_s[i]!=prefix[i]){
                     in_dir = false;
                     leave_dir = true;
                     break;
                 }
             }
+
             for(size_t i=prefix_n;i<fn_n;i++) if(fn_s[i]=='/'){
                 in_dir = false;
                 break;
@@ -234,8 +239,6 @@ bool block_manager::dir_create(const char* s){
 
     // filter
     if(filename!="/"){
-        while(!filename.empty() && filename.back()=='/') filename.pop_back();
-        filename += "/";
         if(!utils::path_is_valid(filename)) return false;
         auto s_parent = utils::path_get_parent(filename);
         auto f_parent = manager.file_find(s_parent.c_str()).file;
@@ -264,7 +267,7 @@ bool block_manager::dir_create(const char* s){
 
 
 /**
- * create dir
+ * create file
  */
 bool block_manager::file_create(const char* s){
 
@@ -272,7 +275,6 @@ bool block_manager::file_create(const char* s){
 
     // filter
     if(!utils::path_is_valid(filename)) return false;
-    if(filename.back()=='/') return false;
     auto s_parent = utils::path_get_parent(filename);
     auto f_parent = manager.file_find(s_parent.c_str()).file;
     if(f_parent.isnull()) return false;

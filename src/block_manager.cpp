@@ -14,6 +14,8 @@ block_manager manager;
  */
 void block_manager::init_zero() {
 
+    driver.init();
+
     // init
     auto b_meta = driver.get_block<block_meta>(0);
 

@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <utility>
 #include <regex>
+#include <map>
 #include <ctime>
 #include <list>
 #include <fstream>
@@ -21,6 +22,7 @@
 #include <climits>
 #include <cassert>
 #include <cstring>
+#include <sys/mman.h>
 
 #define OFFSET(type,member) ((size_t)(&(((type*)0)->member)))
 #define VADDR(index,type,member) (index)+OFFSET(type,member)/block_size,OFFSET(type,member)%block_size
@@ -34,25 +36,46 @@ const size_t block_count = 1024*128;    // 512 M
 /**
  * dirver
  * manage and allocate physical pages
- * todo: allocate when needed
  */
 class driver_object {
 
-    byte_t disk[block_size*block_count] = {0};
+    std::map<size_t,byte_t*> disk;
 
 public:
 
-    template<typename T>
-    inline T* get_block(size_t i){
-        assert(i>=0 && i<block_count);
-        return (T*)(disk+i*block_size);
+    void init(){
+        size_t reserved = 16;
+        auto base = (byte_t*)mmap(nullptr,block_size*reserved,PROT_READ|PROT_WRITE,MAP_PRIVATE | MAP_ANONYMOUS,-1,0);
+        if(base == MAP_FAILED) throw std::bad_alloc();
+        for(size_t i=0;i<reserved;i++){
+            disk[i] = base + i*block_size;
+        }
     }
 
     byte_t* get_block_base(size_t i){
         assert(i>=0 && i<block_count);
-        return (disk+i*block_size);
+        auto ret = disk.find(i);
+        if(ret == disk.end()){
+            auto new_addr = (byte_t*) mmap(nullptr,block_size,PROT_READ|PROT_WRITE,MAP_PRIVATE | MAP_ANONYMOUS,-1,0);
+            if(new_addr == MAP_FAILED) throw std::bad_alloc();
+            disk[i] = new_addr;
+            ret = disk.find(i);
+        }
+        return ret->second;
     }
 
+    template<typename T>
+    inline T* get_block(size_t i){
+        return (T*)get_block_base(i);
+    }
+
+    void free(size_t n){
+        auto r = disk.find(n);
+        if(r!=disk.end()){
+            munmap(r->second,block_size);
+            disk.erase(r);
+        }
+    }
 };
 
 extern driver_object driver;

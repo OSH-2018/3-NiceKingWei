@@ -123,9 +123,14 @@ class block_manager {
     template<typename T>
     void free(pointer<block_list<T>> p_head) {
         if(p_head.isnull()) return;
-        
+
         pointer<block_node> p_tail(p_head);
-        while(!p_tail->next.isnull()) p_tail=p_tail->next;
+        while(!p_tail->next.isnull()){
+            p_tail=p_tail->next;
+            for(auto i=p_tail->start;i<p_tail->end;i++){
+                driver.free(i);
+            }
+        }
 
         p_tail->next = p_free_head->next;
         p_free_head->next = p_head->next;

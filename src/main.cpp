@@ -307,6 +307,26 @@ static int fs_rmdir (const char * dirname){
     return 0;
 }
 
+/**
+ * chmod
+ */
+static int fs_chmod (const char * fname, mode_t mode){
+    auto file = manager.file_find(fname).file;
+    if(file.isnull()) return -ENOENT;
+    file->attr.st_mode = mode;
+    return 0;
+}
+
+/**
+ * chown
+ */
+static int fs_chown(const char * fname, uid_t uid, gid_t gid){
+    auto file = manager.file_find(fname).file;
+    if(file.isnull()) return -ENOENT;
+    file->attr.st_gid = gid;
+    file->attr.st_uid = uid;
+    return 0;
+}
 
 /**
  * register filesystem functions
@@ -329,6 +349,8 @@ int main(int argc, char* argv[]) {
     regfun(unlink);
     regfun(rename);
     regfun(rmdir);
+    regfun(chmod);
+    regfun(chown);
     logger.write("[main]");
 #ifdef DEBUG
     fs_init(nullptr);

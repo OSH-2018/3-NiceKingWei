@@ -50,7 +50,10 @@ static int fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     auto dir = manager.file_find(path).file;
     auto files = manager.dir_list(path);
 
-    if(dir.isnull()) return -ENOENT;
+    if(dir.isnull()) {
+        logger.write("[read dir]","failed");
+        return -ENOENT;
+    }
 
     filler(buf, ".", &dir->attr, 0);
 
@@ -69,7 +72,6 @@ static int fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
         filler(buf, fn , &file->file->attr, 0);
     }
 
-    logger.write("[read dir]","succeed");
     return 0;
 }
 
@@ -82,11 +84,14 @@ static int fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 static int fs_mknod(const char *path, mode_t mode, dev_t dev) {
     logger.write("[mknod]",path);
     try{
-        if(!manager.file_create(path)) return -ENOENT;
+        if(!manager.file_create(path)){
+            logger.write("[mknod]","failed");
+            return -ENOENT;
+        }
     }catch(std::bad_alloc&){
+        logger.write("[mknod]","failed");
         return -ENOSPC;
     }
-    logger.write("[mknod]","succeed");
     return 0;
 }
 
@@ -97,11 +102,14 @@ static int fs_mknod(const char *path, mode_t mode, dev_t dev) {
 static int fs_mkdir(const char* path, mode_t) {
     logger.write("[mkdir]", path);
     try{
-        if (!manager.dir_create(path)) return -ENOENT;
+        if (!manager.dir_create(path)){
+            logger.write("[mkdir]","failed");
+            return -ENOENT;
+        }
     }catch(std::bad_alloc&){
+        logger.write("[mkdir]","failed");
         return -ENOSPC;
     }
-    logger.write("[mkdir]","succeed");
     return 0;
 }
 
@@ -117,13 +125,14 @@ static int fs_open(const char *path, struct fuse_file_info *fi) {
     auto file = manager.file_find(path).file;
 
     if(file.isnull()){
+        logger.write("[open]","failed");
         return -ENOENT;
     }else{
         if(file->is_dir()){
+            logger.write("[open]","failed");
             return -EACCES;
         }
     }
-    logger.write("[open]","succeed");
     return 0;
 }
 
@@ -139,6 +148,7 @@ static int fs_read(const char *path, char *buf, size_t size, off_t offset, struc
     auto file = manager.file_find(path).file;
 
     if(file.isnull() || file->is_dir()){
+        logger.write("[read]","failed");
         return -ENOENT;
     }else{
         off_t len = file->attr.st_size;
@@ -171,7 +181,6 @@ static int fs_read(const char *path, char *buf, size_t size, off_t offset, struc
             return (int)(len-offset);
         }
     }
-    logger.write("[read]","succeed");
     return 0;
 }
 
@@ -185,7 +194,10 @@ static int fs_write(const char *path, const char *buf, size_t size, off_t offset
     logger.write("[write]",path,offset,size);
 
     auto file = manager.file_find(path).file;
-    if(file.isnull()) return -ENOENT;
+    if(file.isnull()) {
+        logger.write("[write]","failed");
+        return -ENOENT;
+    }
 
     size_t& old_n = file->block->count();
     size_t  new_n = (offset+size)/block_size+1;
@@ -213,11 +225,11 @@ static int fs_write(const char *path, const char *buf, size_t size, off_t offset
             read_buf += n;
         }
     }catch(std::bad_alloc& e){
+        logger.write("[write]","succeed");
         return -ENOSPC;
     }
     file->attr.st_size = offset + size;
     file->attr.st_blocks = file->block->count();
-    logger.write("[write]","succeed");
     return (int)size;
 }
 
@@ -231,8 +243,10 @@ static int fs_truncate(const char *path, off_t size) {
 
     auto file = manager.file_find(path).file;
 
-    if(file.isnull())
+    if(file.isnull()){
+        logger.write("[truncate]","failed");
         return -ENOENT;
+    }
 
     try{
         if(size > file->attr.st_size){
@@ -245,9 +259,9 @@ static int fs_truncate(const char *path, off_t size) {
         file->attr.st_size = size;
         file->attr.st_blocks = file->block->count();
     }catch(std::bad_alloc&){
+        logger.write("[truncate]","failed");
         return -ENOSPC;
     }
-    logger.write("[truncate]","succeed");
     return 0;
 }
 
@@ -258,8 +272,10 @@ static int fs_truncate(const char *path, off_t size) {
  */
 static int fs_unlink(const char *path) {
     logger.write("[unlink]",path);
-    if(!manager.file_remove(path)) return -ENOENT;
-    logger.write("[unlink]","succeed");
+    if(!manager.file_remove(path)){
+        logger.write("[unlink]","failed");
+        return -ENOENT;
+    }
     return 0;
 }
 
@@ -270,7 +286,10 @@ static int fs_unlink(const char *path) {
 static int fs_rename(const char * old_name, const char *new_name){
     logger.write("[rename]",old_name,new_name);
     auto file = manager.file_find(old_name).file;
-    if(file.isnull() || file->is_dir()) return -ENOENT;
+    if(file.isnull() || file->is_dir()) {
+        logger.write("[rename]", "failed");
+        return -ENOENT;
+    }
     try {
         auto ret = fs_mknod(new_name,0,0);
         if(ret) return ret;
@@ -285,9 +304,9 @@ static int fs_rename(const char * old_name, const char *new_name){
         manager.file_remove(old_name);
 
     }catch(std::bad_alloc&){
+        logger.write("[rename]","failed");
         return -ENOSPC;
     }
-    logger.write("[rename]","succeed");
     return 0;
 }
 
@@ -299,11 +318,16 @@ static int fs_rmdir (const char * dirname){
     logger.write("[rmdir]",dirname);
     if(std::string(dirname) == "/") return 0;
     auto dir = manager.file_find(dirname).file;
-    if(dir.isnull() || !dir->is_dir()) return -ENOENT;
+    if(dir.isnull() || !dir->is_dir()) {
+        logger.write("[rmdir]","failed");
+        return -ENOENT;
+    }
     auto file = manager.dir_list(dirname);
-    if(!file.empty()) return -EPERM;
+    if(!file.empty()){
+        logger.write("[rmdir]","failed");
+        return -EPERM;
+    }
     manager.file_remove(dirname);
-    logger.write("[rmdir]","succeed");
     return 0;
 }
 

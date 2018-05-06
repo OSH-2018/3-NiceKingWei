@@ -153,6 +153,7 @@ void block_manager::file_find_interval(const char *filename,pointer<skipnode> pr
  * @return false if failed
  */
 bool block_manager::file_remove(const char* filename) {
+    if(std::string(filename)=="/") return true;
     pointer<skipnode> pre_list[MAX_DEPTH];
     file_find_interval(filename,pre_list);
 

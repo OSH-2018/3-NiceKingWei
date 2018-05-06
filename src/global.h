@@ -20,9 +20,10 @@
 #include <fuse.h>
 #include <fcntl.h>
 #include <climits>
-#include <cassert>
 #include <cstring>
 #include <sys/mman.h>
+
+#include "log.h"
 
 #define OFFSET(type,member) ((size_t)(&(((type*)0)->member)))
 #define VADDR(index,type,member) (index)+OFFSET(type,member)/block_size,OFFSET(type,member)%block_size
@@ -31,37 +32,59 @@ typedef uint8_t byte_t;
 const size_t block_size = 4096;         // 4 k
 const size_t block_count = 1024*128;    // 512 M
 
+#define assert(expr)\
+((expr)\
+?0\
+:logger.write("assertion failed:",__STRING(expr),__FILE__,__LINE__))
+
 
 
 /**
  * dirver
  * manage and allocate physical pages
  */
-class driver_object {
+#define NAIVE
 
+class driver_object {
+#ifndef NAIVE
     std::map<size_t,byte_t*> disk;
+#else
+    byte_t disk[block_size*block_count];
+#endif
 
 public:
 
     void init(){
+#ifndef NAIVE
         size_t reserved = 16;
         auto base = (byte_t*)mmap(nullptr,block_size*reserved,PROT_READ|PROT_WRITE,MAP_PRIVATE | MAP_ANONYMOUS,-1,0);
-        if(base == MAP_FAILED) throw std::bad_alloc();
+        if(base == MAP_FAILED){
+            logger.write("[panic]","map failed");
+            throw std::bad_alloc();
+        }
         for(size_t i=0;i<reserved;i++){
             disk[i] = base + i*block_size;
         }
+#endif
     }
 
     byte_t* get_block_base(size_t i){
         assert(i>=0 && i<block_count);
+#ifndef NAIVE
         auto ret = disk.find(i);
         if(ret == disk.end()){
             auto new_addr = (byte_t*) mmap(nullptr,block_size,PROT_READ|PROT_WRITE,MAP_PRIVATE | MAP_ANONYMOUS,-1,0);
-            if(new_addr == MAP_FAILED) throw std::bad_alloc();
+            if(new_addr == MAP_FAILED) {
+                logger.write("[panic]","map failed");
+                throw std::bad_alloc();
+            }
             disk[i] = new_addr;
             ret = disk.find(i);
         }
         return ret->second;
+#else
+        return &disk[i*block_size];
+#endif
     }
 
     template<typename T>
@@ -70,11 +93,13 @@ public:
     }
 
     void free(size_t n){
+#ifndef NAIVE
         auto r = disk.find(n);
         if(r!=disk.end()){
             munmap(r->second,block_size);
             disk.erase(r);
         }
+#endif
     }
 };
 

@@ -8,6 +8,3 @@
 
 // singleton
 driver_object driver;
-
-
-

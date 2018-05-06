@@ -5,7 +5,7 @@
 #ifndef MEMFS_LOG_H
 #define MEMFS_LOG_H
 
-#include "global.h"
+#include <fstream>
 
 struct log{
     std::ofstream fout;
@@ -14,22 +14,23 @@ struct log{
         fout.open("memfs.log");
     }
 
-    void write(){
+    int write(){
 #ifdef DEBUG
         std::cout<<std::endl;
         std::cout.flush();
 #endif
         fout<<std::endl;
         fout.flush();
+        return 0;
     }
 
     template<typename T,typename...TS>
-    void write(T x,TS... args){
+    int write(T x,TS... args){
 #ifdef DEBUG
         std::cout<<x<<' ';
 #endif
         fout<<x<<' ';
-        write(args...);
+        return write(args...);
     }
 };
 

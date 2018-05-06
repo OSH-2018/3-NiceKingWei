@@ -5,6 +5,8 @@
 #ifndef MEMFS_GLOBAL_H
 #define MEMFS_GLOBAL_H
 
+//#define DEBUG
+
 #include <iostream>
 #include <string>
 #include <algorithm>
@@ -12,13 +14,16 @@
 #include <regex>
 #include <ctime>
 #include <list>
+#include <fstream>
 #include <unistd.h>
 #include <fuse.h>
 #include <fcntl.h>
+#include <climits>
 #include <cassert>
 #include <cstring>
 
-#define OFFSET(type,member) ((size_t)(&((type*)0)->member))
+#define OFFSET(type,member) ((size_t)(&(((type*)0)->member)))
+#define VADDR(index,type,member) (index)+OFFSET(type,member)/block_size,OFFSET(type,member)%block_size
 
 typedef uint8_t byte_t;
 const size_t block_size = 4096;         // 4 k
@@ -39,12 +44,12 @@ public:
 
     template<typename T>
     inline T* get_block(size_t i){
-        assert(i<block_count);
+        assert(i>=0 && i<block_count);
         return (T*)(disk+i*block_size);
     }
 
     byte_t* get_block_base(size_t i){
-        assert(i<block_count);
+        assert(i>=0 && i<block_count);
         return (disk+i*block_size);
     }
 
@@ -59,8 +64,8 @@ extern driver_object driver;
 template<typename T>
 struct pointer {
 
-    size_t base = 0;
-    size_t offset = 0;
+    size_t base = SIZE_MAX;
+    size_t offset = SIZE_MAX;
 
     pointer() noexcept = default;
 
@@ -69,16 +74,24 @@ struct pointer {
         this->offset = offset;
     };
 
-    T& operator * () const {
-        return *((T*)driver.get_block_base(base)+offset);
-    }
-
-    T* operator -> () const {
-        return ((T*)driver.get_block_base(base)+offset);
+    template<typename R>
+    explicit pointer(pointer<R> p){
+        base = p.base;
+        offset = p.offset;
     }
 
     bool isnull() const{
-        return base==0&&offset==0;
+        return base==SIZE_MAX&&offset==SIZE_MAX;
+    }
+
+    T& operator * () const {
+        assert(!isnull());
+        return *((T*)(driver.get_block_base(base)+offset));
+    }
+
+    T* operator -> () const {
+        assert(!isnull());
+        return ((T*)(driver.get_block_base(base)+offset));
     }
 
     bool operator == (const pointer& x) const {
@@ -89,45 +102,14 @@ struct pointer {
         return base!=x.base || offset != x.offset;
     };
 };
-#define null_pointer {0,0}
+#define null_pointer {SIZE_MAX,SIZE_MAX}
 
-/**
- * skiplist
- */
-#define MAX_DEPTH 4
 
-struct filenode;
-struct static_string;
-
-struct skipnode {
-    pointer<skipnode> next;
-    pointer<skipnode> down;
-    pointer<static_string> filename;
-    pointer<filenode> file;
-
-    skipnode* init(){
-        down = next = null_pointer;
-        return this;
-    }
-
-    bool operator < (const char* str) const;
-    bool operator == (const char* str) const;
-    bool operator >= (const char* str) const;
-
-    void del(){
-        next = down = null_pointer;
-        filename = null_pointer;
-        file = null_pointer;
-    }
-
-    bool is_del(){
-        return filename.isnull() && file.isnull();
-    }
-};
 
 struct utils{
     inline static std::string path_get_parent(const std::string& s){
         std::string ss = s;
+        if(!ss.empty() && ss.back()=='/') ss.pop_back();
         while(!ss.empty() && ss.back()!='/') ss.pop_back();
         return ss;
     }
@@ -135,10 +117,6 @@ struct utils{
     inline static bool path_is_valid(const std::string& s){
         const char* reg = "^(/[^/ ]*)+/?$";
         return std::regex_match(s,std::regex(reg));
-    }
-
-    inline static bool path_is_dir(const std::string& s){
-        return s.back()=='/';
     }
 };
 

@@ -6,16 +6,15 @@
 #define MEMFS_BLOCK_FILE_H
 
 #include "global.h"
+#include "block_meta.h"
 
 /**
  * filenode
  */
 
-struct block_node;
-
 struct filenode {
     struct stat attr;
-    pointer<block_node> block;
+    pointer<block_list<byte_t>> block;
 
     void del(){
         block = null_pointer;
@@ -23,6 +22,10 @@ struct filenode {
 
     bool is_del(){
         return block.isnull();
+    }
+
+    bool is_dir(){
+        return (attr.st_mode & S_IFDIR)!=0;
     }
 };
 
@@ -49,7 +52,7 @@ struct block_file {
         if(count>=max_file) return null_pointer;
 
         nodes[count] = file;
-        pointer<filenode> ret {index,OFFSET(block_file,nodes[count])};
+        pointer<filenode> ret {VADDR(index,block_file,nodes[count])};
         count++;
 
         return ret;

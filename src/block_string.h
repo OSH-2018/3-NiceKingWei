@@ -11,17 +11,17 @@
  * static string
  */
 struct static_string{
-    int32_t n;
+    size_t n;
     char* str(){
         return (char*)(this+1);
     }
 
     void del(){
-        if(n>0) n = -n;
+        n = SIZE_MAX;
     }
 
     bool is_del(){
-        return n<0;
+        return n==SIZE_MAX;
     }
 };
 
@@ -76,11 +76,13 @@ public:
         assert(cur!=0 || new_cur<max_cur);  // cur==0 => new_cur<max_cur todo: string has max length
 
         if(new_cur<max_cur){
-            byte_t* start = array() + cur;
-            pointer<static_string> ret(index,array_offset()+cur);
+            auto start = (static_string*)(array() + cur);
 
-            ((size_t*)start)[0] = n;            // length
-            memcpy(start+sizeof(size_t),s,n);   // array
+            auto off = array_offset()+cur;
+            pointer<static_string> ret (index+off/block_size,off%block_size);
+
+            start->n = n;               // n
+            memcpy(start->str(),s,n);   // array
 
             cur = new_cur;
 

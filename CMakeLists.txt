@@ -6,7 +6,7 @@ pkg_check_modules(FUSE REQUIRED fuse)
 
 set(CMAKE_CXX_STANDARD 11)
 
-add_executable(memfs main.cpp global.h block_file.h block_meta.h block_skiplist.h block_string.h  global.cpp block_manager.cpp block_manager.h)
+add_executable(memfs src/main.cpp src/global.h src/block_file.h src/block_meta.h src/block_skiplist.h src/block_string.h src/global.cpp src/block_manager.cpp src/block_manager.h src/log.h src/log.cpp)
 
 target_link_libraries(memfs fuse)
 target_compile_options(memfs PUBLIC ${FUSE_CFLAGS_OTHER})

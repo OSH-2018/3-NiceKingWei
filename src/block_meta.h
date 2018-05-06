@@ -16,6 +16,8 @@ struct block_node {
     size_t end = 0;
     pointer<block_node> next;
 
+    block_node() = default;
+
     block_node(size_t start,size_t end,pointer<block_node> next){
         this->start = start;
         this->end = end;
@@ -32,10 +34,6 @@ struct block_node {
         return this;
     }
 
-    inline size_t& count(){
-        return start;
-    }
-
     void del(){
         start = end = 0;
         next = null_pointer;
@@ -43,6 +41,34 @@ struct block_node {
 
     bool is_del(){
         return start == 0 && end == 0;
+    }
+};
+
+
+template<typename T>
+struct block_list: public block_node {
+
+    inline size_t& count(){
+        return start;
+    }
+
+    T* get_block(size_t index){
+        if(index<count()){
+            size_t ipos = count();
+            auto ppos = next;
+            // [0,ipos)
+            while(ipos > index){
+                size_t new_ipos = ipos - (ppos->end - ppos->start);
+                assert(new_ipos<ipos);
+                if(new_ipos <= index){
+                    size_t num = ppos->start + index - new_ipos;
+                    return (T*)driver.get_block_base(num);
+                }
+                ipos = new_ipos;
+                ppos = ppos->next;
+            }
+        }
+        return nullptr;
     }
 };
 

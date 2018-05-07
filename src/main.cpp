@@ -92,6 +92,7 @@ static int fs_mknod(const char *path, mode_t mode, dev_t dev) {
         logger.write("[mknod]","failed");
         return -ENOSPC;
     }
+    logger.write("[mknod]","succeed");
     return 0;
 }
 
@@ -154,11 +155,13 @@ static int fs_read(const char *path, char *buf, size_t size, off_t offset, struc
         off_t len = file->attr.st_size;
         if(offset < len){
             off_t max_size = len - offset;
-            size = std::min(size,(size_t)max_size);
-
+            if(size>max_size){
+                memset(buf,0,size-max_size);
+                size = (size_t)max_size;
+            }
             // [start,end]
             size_t start_block = offset/block_size;
-            size_t end_block = (offset+size)/block_size;
+            size_t end_block = (offset+size+block_size-1)/block_size - 1;
 
             auto write_buf = (byte_t*)buf;
             for(size_t i=start_block;i<=end_block;i++){
@@ -175,10 +178,13 @@ static int fs_read(const char *path, char *buf, size_t size, off_t offset, struc
                 }else{
                     n = block_size;
                 }
+#ifdef VERBOSE
+                logger.write("[read]",(pb - driver.disk),n);
+#endif
                 memcpy(write_buf,pb,n);
                 write_buf += n;
             }
-            return (int)(len-offset);
+            return (int)size;
         }
     }
     return 0;
@@ -207,7 +213,7 @@ static int fs_write(const char *path, const char *buf, size_t size, off_t offset
 
         // [start,end]
         size_t start_block = offset/block_size;
-        size_t end_block = (offset+size)/block_size;
+        size_t end_block = (offset+size+block_size-1)/block_size - 1;
 
         auto read_buf = (byte_t*)buf;
         for(size_t i=start_block;i<=end_block;i++) {
@@ -221,11 +227,14 @@ static int fs_write(const char *path, const char *buf, size_t size, off_t offset
             }else{
                 n = block_size;
             }
+#ifdef VERBOSE
+            logger.write("[write]",(pb - driver.disk),n);
+#endif
             memcpy(pb,read_buf,n);
             read_buf += n;
         }
     }catch(std::bad_alloc& e){
-        logger.write("[write]","succeed");
+        logger.write("[write]","failed");
         return -ENOSPC;
     }
     file->attr.st_size = offset + size;
@@ -361,21 +370,7 @@ struct fuse_operations memfs_operations;
 
 
 int main(int argc, char* argv[]) {
-    regfun(init);
-    regfun(getattr);
-    regfun(mkdir);
-    regfun(readdir);
-    regfun(mknod);
-    regfun(open);
-    regfun(write);
-    regfun(read);
-    regfun(truncate);
-    regfun(unlink);
-    regfun(rename);
-    regfun(rmdir);
-    regfun(chmod);
-    regfun(chown);
-    logger.write("[main]");
+
 #ifdef DEBUG
     fs_init(nullptr);
     struct stat x;
@@ -383,7 +378,8 @@ int main(int argc, char* argv[]) {
     // test0
     char read[64];
     char buf[] = "skysissi, I love you!\n";
-
+    char nothing[block_size+1];
+    memset(nothing,0xff,block_size);
 /*    fs_getattr("/",&x);
     fs_getattr("/.Trash",&x);
     fs_mkdir("/x",0);
@@ -411,7 +407,34 @@ int main(int argc, char* argv[]) {
     fs_rmdir("/dir1/dir11");
     fs_unlink("/dir1/x");
     fs_rmdir("/dir1");
+    fs_mkdir("/.git",0);
+    fs_mkdir("/.git/obj",0);
+    fs_mkdir("/.git/obj/pack",0);
+    fs_mkdir("/.git/obj/pack/s",0);
+    fs_mkdir("/.git/obj/pack/s/x",0);
+    fs_mkdir("/.git/obj/pack/s/x/uu",0);
+    fs_mkdir("/.git/obj/pack/s/x/uu/y",0);
+    fs_mknod("/.git/obj/pack/s/x/uu/y/bugfile",0,0);
+    for(int i=0;i<256;i++){
+        fs_write("/.git/obj/pack/s/x/uu/y/bugfile",nothing,block_size,i*block_size, nullptr);
+    }
+    return 0;
 #else
+    regfun(init);
+    regfun(getattr);
+    regfun(mkdir);
+    regfun(readdir);
+    regfun(mknod);
+    regfun(open);
+    regfun(write);
+    regfun(read);
+    regfun(truncate);
+    regfun(unlink);
+    regfun(rename);
+    regfun(rmdir);
+    regfun(chmod);
+    regfun(chown);
+    logger.write("[main]");
     return fuse_main(argc, argv, &memfs_operations, nullptr);
 #endif
 }

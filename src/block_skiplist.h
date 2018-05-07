@@ -27,7 +27,7 @@ struct skipnode {
         return this;
     }
 
-    bool operator<(const char *str_s2) const {
+    bool operator<(const char *str_s2) const noexcept {
         if(filename.isnull()) return true;  // null is minimal
 
         static_string& s1 = *filename;
@@ -40,7 +40,7 @@ struct skipnode {
         return str_s2[len_s1]!=0;
     }
 
-    bool operator==(const char *str_s2) const {
+    bool operator==(const char *str_s2) const noexcept {
         if(filename.isnull()) return false;  // null is minimal
 
         static_string& s1 = *filename;
@@ -52,7 +52,7 @@ struct skipnode {
         return str_s2[len_s1]=='\0';
     }
 
-    bool operator>=(const char *str_s2) const {
+    bool operator>=(const char *str_s2) const noexcept {
         return !((*this)<str_s2);
     }
 

@@ -6,6 +6,9 @@
 #define MEMFS_GLOBAL_H
 
 //#define DEBUG
+#define NAIVE
+//#define DUMP
+#define VERBOSE
 
 #include <iostream>
 #include <string>
@@ -35,7 +38,7 @@ const size_t block_count = 1024*128;    // 512 M
 #define assert(expr)\
 ((expr)\
 ?0\
-:logger.write("assertion failed:",__STRING(expr),__FILE__,__LINE__))
+:(logger.write("assertion failed:",__STRING(expr),__FILE__,__LINE__),driver.dump()))
 
 
 
@@ -43,9 +46,13 @@ const size_t block_count = 1024*128;    // 512 M
  * dirver
  * manage and allocate physical pages
  */
-#define NAIVE
 
-class driver_object {
+class driver_object;
+extern driver_object driver;
+//class block_manager;
+//extern block_manager manager;
+
+struct driver_object {
 #ifndef NAIVE
     std::map<size_t,byte_t*> disk;
 #else
@@ -101,9 +108,20 @@ public:
         }
 #endif
     }
+
+    int dump(){
+#ifndef NAIVE
+#else
+        std::ofstream fout("/home/nicekingwei/memfs.bin");
+        for(size_t i=0;i<block_count;i++){
+            fout.write((char*)&disk[i],block_count);
+        }
+        fout.close();
+        return 0;
+#endif
+    }
 };
 
-extern driver_object driver;
 
 
 /**
@@ -158,7 +176,7 @@ struct utils{
     inline static std::string path_get_parent(const std::string& s){
         std::string ss = s;
         while(!ss.empty() && ss.back()!='/') ss.pop_back();
-        if(ss!="/") ss.pop_back();
+        if(ss.length()>1) ss.pop_back();
         return ss;
     }
 

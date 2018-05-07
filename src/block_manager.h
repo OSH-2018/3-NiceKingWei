@@ -45,7 +45,7 @@ class block_manager {
 
         if(block.count >= block_meta::max_nodes) throw std::bad_alloc();
 
-        auto ret = pointer<block_node> {VADDR(block.index,block_meta,nodes[block.count])};
+        auto ret = pointer<block_node> {VADDR(p_node->start,block_meta,nodes[block.count])};
         block.count++;
 
         return ret;
@@ -55,10 +55,16 @@ class block_manager {
     /**
      * allocate a new block for meta block when necessary
      */
+    bool in_enough_meta = false;
     inline void alloc_enough_meta(){
         auto p_node = p_meta_head->next;
+        if(p_node.isnull()) return;
         auto& block = *driver.get_block<block_meta>(p_node->start);
-        if(block.count > block_meta::max_nodes/2) allocate(p_meta_head,block_meta::blocks_in_meta);
+        if(block.count > block_meta::max_nodes/2 && !in_enough_meta){
+            in_enough_meta = true;
+            allocate(p_meta_head,block_meta::blocks_in_meta);
+            in_enough_meta = false;
+        }
     }
 
 
@@ -86,35 +92,35 @@ class block_manager {
      */
     void merge_freeblocks(){
 
-        // bubble sort
-        for(auto s= p_free_head->next;!s.isnull();s=s->next){
-            for(auto p=s;!p->next.isnull();p=p->next){
-                auto q = p->next;
-                if(q->start < p->start){
-                    std::swap(p->start,q->start);
-                    std::swap(p->end,q->end);
-                    std::swap(p->next,q->next);
-                }
-            }
-        }
-
-        // merge
-        for(auto p= p_free_head->next;!p->next.isnull();p=p->next){
-            auto q = p->next;
-            if(q->start == p->end){
-                auto new_start = p->start;
-                auto new_end = q->end;
-                auto new_size = new_end - new_start;
-
-                // proper block
-                if(new_end%new_size == 0){
-                    p->next = q->next;
-                    p->start = new_start;
-                    p->end = new_end;
-                    q->del();
-                }
-            }
-        }
+//        // bubble sort
+//        for(auto s= p_free_head->next;!s.isnull();s=s->next){
+//            for(auto p=s;!p->next.isnull();p=p->next){
+//                auto q = p->next;
+//                if(q->start < p->start){
+//                    std::swap(p->start,q->start);
+//                    std::swap(p->end,q->end);
+//                    std::swap(p->next,q->next);
+//                }
+//            }
+//        }
+//
+//        // merge
+//        for(auto p= p_free_head->next;!p->next.isnull();p=p->next){
+//            auto q = p->next;
+//            if(q->start == p->end){
+//                auto new_start = p->start;
+//                auto new_end = q->end;
+//                auto new_size = new_end - new_start;
+//
+//                // proper block
+//                if(new_end%new_size == 0){
+//                    p->next = q->next;
+//                    p->start = new_start;
+//                    p->end = new_end;
+//                    q->del();
+//                }
+//            }
+//        }
     }
 
     /**
@@ -237,6 +243,9 @@ public:
     std::list<pointer<skipnode>> dir_list(const char* dirname);
     bool dir_create(const char *filename);
 
+    int dump();
+
+    std::string dump_alloc();
 
     /**
     * allocate

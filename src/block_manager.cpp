@@ -40,6 +40,7 @@ void block_manager::init_zero() {
 
     // alloc
     auto i_meta = allocate(p_meta_head, block_meta::blocks_in_meta)->next->start;
+    p_meta_head->next = p_meta_head->next->next;
     auto i_string = allocate(p_string_head, block_string::blocks_in_string)->next->start;
     auto i_file = allocate(p_file_head, block_file::blocks_in_file)->next->start;
     auto i_skiplist = allocate(p_skiplist_head, block_skiplist::blocks_in_skiplist)->next->start;
@@ -293,6 +294,32 @@ bool block_manager::file_create(const char* s){
     new_file.st_size = 0;
     new_file.st_mode = S_IFREG | 0644;
     file_new(new_file,s);
-
+#ifdef DUMP
+    dump();
+#endif
     return true;
+}
+
+int block_manager::dump() {
+    std::ofstream fout("/home/nicekingwei/memfs.txt");
+//    fout<<"reserved:\n";
+    fout<<"skiplist:\n";
+    for(int i=MAX_DEPTH-1;i>=0;i--){
+        auto node = p_skip_dummy[i]->next;
+        while(!node.isnull()) {
+            fout<<node->filename->str()<<" ";
+            node = node->next;
+        }
+        fout<<"\n";
+    }
+    fout.close();
+    return 0;
+}
+
+std::string block_manager::dump_alloc() {
+    std::stringstream ret;
+    for(auto node = p_free_head->next;!node.isnull();node=node->next){
+        ret << node->end - node->start << ",";
+    }
+    return ret.str();
 }

@@ -5,10 +5,7 @@
 #ifndef MEMFS_GLOBAL_H
 #define MEMFS_GLOBAL_H
 
-#define DEBUG
-#define NAIVE
-//#define DUMP
-//#define VERBOSE
+
 
 #include <iostream>
 #include <string>

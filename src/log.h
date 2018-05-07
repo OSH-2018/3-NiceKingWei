@@ -5,6 +5,11 @@
 #ifndef MEMFS_LOG_H
 #define MEMFS_LOG_H
 
+#define DEBUG
+#define NAIVE
+//#define DUMP
+//#define VERBOSE
+
 #include <fstream>
 #include <iostream>
 #include <mutex>
@@ -17,65 +22,68 @@ struct log{
         fout.open("memfs.log");
     }
 
-    int write_(){
-#ifdef DEBUG
-        std::cout<<std::endl;
-        std::cout.flush();
-#endif
-        fout<<std::endl;
-        fout.flush();
+    int write_(std::ostream& out){
+        out<<std::endl;
+        out.flush();
         return 0;
     }
 
     template<typename T,typename...TS>
-    int write_(T x,TS... args){
-#ifdef DEBUG
-        std::cout<<x<<' ';
-#endif
-        fout<<x<<' ';
-        return write_(args...);
+    int write_(std::ostream& out,T x,TS... args){
+        out<<x<<' ';
+        return write_(out,args...);
     }
 
     template<typename...TS>
     int write(TS... args){
         mtx.lock();
-        write_(args...);
+#ifdef DEBUG
+        write_(std::cout,args...);
+#else
+        write_(fout,args...);
+#endif
         mtx.unlock();
         return 0;
     };
 
     template<typename T>
-    int write_fun_(T x){
-        fout<<x;
-        fout.flush();
+    int write_fun_(std::ostream& out,T x){
+        out<<x;
+        out.flush();
         return 0;
     }
 
-    int write_fun_(const char* x){
-        fout<<'"'<<x<<'"';
-        fout.flush();
+    int write_fun_(std::ostream& out,const char* x){
+        out<<'"'<<x<<'"';
+        out.flush();
         return 0;
     }
 
     template<typename T,typename Q,typename...TS>
-    int write_fun_(T x,Q y,TS... args){
-        fout<<x<<',';
-        return write_fun_(y,args...);
+    int write_fun_(std::ostream& out,T x,Q y,TS... args){
+        out<<x<<',';
+        return write_fun_(out,y,args...);
     }
 
     template<typename Q,typename...TS>
-    int write_fun_(const char* x,Q y,TS... args){
-        fout<<'"'<<x<<"\",";
-        return write_fun_(y,args...);
+    int write_fun_(std::ostream& out,const char* x,Q y,TS... args){
+        out<<'"'<<x<<"\",";
+        return write_fun_(out,y,args...);
     }
 
     template<typename...TS>
     int write_fun(const char* funname,TS...arg){
         mtx.lock();
-        fout<<"[call]"<<funname<<"(";
-        write_fun_(arg...);
+#ifdef DEBUG
+        std::cout<<"[call] "<<funname<<"(";
+        write_fun_(std::cout,arg...);
+        std::cout<<");\n";
+#else
+        fout<<"[call] "<<funname<<"(";
+        write_fun_(fout,arg...);
         fout<<");\n";
         mtx.unlock();
+#endif
         return 0;
     }
 };

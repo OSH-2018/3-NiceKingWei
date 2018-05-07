@@ -27,7 +27,7 @@ struct skipnode {
         return this;
     }
 
-    bool operator<(const char *str_s2) const noexcept {
+    bool operator < (const char *str_s2) const noexcept {
         if(filename.isnull()) return true;  // null is minimal
 
         static_string& s1 = *filename;
@@ -79,7 +79,7 @@ struct block_skiplist {
 
     const static size_t blocks_in_skiplist = 4;
 
-    const static size_t max_skip = block_size*blocks_in_skiplist / sizeof(struct stat) - 1;
+    const static size_t max_skip = block_size*blocks_in_skiplist / sizeof(skipnode) - 1;
     skipnode nodes[max_skip];
 
     block_skiplist* init(size_t index) {
@@ -97,7 +97,10 @@ struct block_skiplist {
 
         return ret;
     }
+
 };
+
+static_assert(sizeof(block_skiplist)<block_size*block_skiplist::blocks_in_skiplist);
 
 
 #endif //MEMFS_BLOCK_SKIPLIST_H

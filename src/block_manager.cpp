@@ -64,7 +64,6 @@ void block_manager::init_zero() {
 
 
 #define LT(p,s) (!(p).isnull() && *(p) < (s))
-#define GTE(p,s) ((p).isnull() || *(p) >= (s))
 #define EQ(p,s) (!(p).isnull() && *(p) == (s))
 
 
@@ -75,6 +74,10 @@ void block_manager::init_zero() {
  * @return skipnode on the bottom; null pointer in fileds if failed
  */
 skipnode block_manager::file_find(const char *filename) {
+
+#ifdef VERBOSE
+    logger.write(dump_alloc());
+#endif
 
     auto failed = skipnode {null_pointer,null_pointer,null_pointer,null_pointer};
 
@@ -91,11 +94,9 @@ skipnode block_manager::file_find(const char *filename) {
 
         // shrink the interval
         while(LT(p_int_r,filename)){
-            auto try_int_l = p_int_r;
-            if(try_int_l.isnull()) break;
-            auto try_int_r = try_int_l->next;
-            p_int_l = try_int_l;
-            p_int_r = try_int_r;
+            p_int_l = p_int_r;
+            assert(!p_int_l.isnull());
+            p_int_r = p_int_l->next;
         }
 
         // found
@@ -154,6 +155,11 @@ void block_manager::file_find_interval(const char *filename,pointer<skipnode> pr
  * @return false if failed
  */
 bool block_manager::file_remove(const char* filename) {
+
+#ifdef VERBOSE
+    logger.write("skiplist",dump_skip());
+#endif
+
     if(std::string(filename)=="/") return true;
     pointer<skipnode> pre_list[MAX_DEPTH];
     file_find_interval(filename,pre_list);
@@ -175,7 +181,7 @@ bool block_manager::file_remove(const char* filename) {
             to_del->del();
         }
     }
-    to_del_filename->del();
+    if(!to_del_filename.isnull()) to_del_filename->del();
 
     return succ;
 }
@@ -275,6 +281,7 @@ bool block_manager::dir_create(const char* s){
  */
 bool block_manager::file_create(const char* s){
 
+
     std::string filename(s);
 
     // filter
@@ -294,32 +301,68 @@ bool block_manager::file_create(const char* s){
     new_file.st_size = 0;
     new_file.st_mode = S_IFREG | 0644;
     file_new(new_file,s);
-#ifdef DUMP
-    dump();
-#endif
+
     return true;
 }
 
-int block_manager::dump() {
-    std::ofstream fout("/home/nicekingwei/memfs.txt");
-//    fout<<"reserved:\n";
-    fout<<"skiplist:\n";
+std::string block_manager::dump_skip() {
+    std::stringstream ret;
+    ret<<"\n";
     for(int i=MAX_DEPTH-1;i>=0;i--){
         auto node = p_skip_dummy[i]->next;
         while(!node.isnull()) {
-            fout<<node->filename->str()<<" ";
+            ret<<node->filename->str()<<" ";
             node = node->next;
         }
-        fout<<"\n";
+        ret<<"\n";
     }
-    fout.close();
-    return 0;
+    return ret.str();
 }
 
+#define output_node(node)\
+ret << "("<< node->start << "," << node->end << ") ";
+
+/*
+for(size_t i=node->start;i<node->end;i++){\
+    assert(binmap.find(i)==binmap.end());\
+    binmap[i] = true;\
+}
+*/
+
 std::string block_manager::dump_alloc() {
+    std::map<int,bool> binmap;
     std::stringstream ret;
+    ret<<"free:";
     for(auto node = p_free_head->next;!node.isnull();node=node->next){
-        ret << node->end - node->start << ",";
+        output_node(node);
+    }
+    ret<<"\n";
+    ret<<"skip:";
+    for(auto node = p_skiplist_head->next;!node.isnull();node=node->next){
+        output_node(node);
+    }
+    ret<<"\n";
+    ret<<"meta:";
+    for(auto node = p_meta_head->next;!node.isnull();node=node->next){
+        output_node(node);
+    }
+    ret<<"\n";
+    ret<<"string:";
+    for(auto node = p_string_head->next;!node.isnull();node=node->next){
+        output_node(node);
+    }
+    ret<<"\n";
+    ret<<"file:";
+    for(auto node = p_file_head->next;!node.isnull();node=node->next){
+        output_node(node);
+    }
+    ret<<"\n";
+    for(auto file = p_skip_dummy[0]->next;!file.isnull();file=file->next){
+        ret<<file->filename->str()<<":";
+        for(auto node = file->file->block->next;!node.isnull();node=node->next){
+            output_node(node);
+        }
+        ret<<"\n";
     }
     return ret.str();
 }

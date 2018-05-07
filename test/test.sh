@@ -24,3 +24,11 @@ cp mnt1/result.txt out2.std
 cp mnt2/result.txt out2.my
 diff out2.std out2.my
 sudo umount mnt2
+
+echo "test3"                    #
+rm -rf mnt*
+mkdir mnt1 mnt2
+./memfs mnt2
+../test/test3.sh mnt1           #
+../test/test3.sh mnt2           #
+sudo umount mnt2

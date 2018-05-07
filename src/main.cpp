@@ -8,7 +8,10 @@
  * init
  */
 static void* fs_init(struct fuse_conn_info *conn) {
-    logger.write("[init]");
+
+    calllog(0);
+    logger.write("[fun]","fs_init()");
+
     manager.init_zero();
     return nullptr;
 }
@@ -20,17 +23,20 @@ static void* fs_init(struct fuse_conn_info *conn) {
  */
 static int fs_getattr(const char* path, struct stat* stbuf) {
 
-//    logger.write("[get attr]",path);
+    calllog(path,0);
+
+#ifdef DEBUG
+    struct stat s;
+    stbuf = &s;
+#endif
 
     memset(stbuf, 0, sizeof(struct stat));
 
     auto file = manager.file_find(path).file;
 
     if(file.isnull()){
-//        logger.write("[get attr]","null");
         return -ENOENT;
     } else {
-//        logger.write("[get attr]","found");
         *stbuf = file->attr;
         return 0;
     }
@@ -45,6 +51,8 @@ static int fs_getattr(const char* path, struct stat* stbuf) {
 static int fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
                          off_t offset, struct fuse_file_info *fi)
 {
+    calllog(path,"buf","filler",offset,0);
+
     logger.write("[read dir]",path);
 
     auto dir = manager.file_find(path).file;
@@ -82,6 +90,7 @@ static int fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
  * create file
  */
 static int fs_mknod(const char *path, mode_t mode, dev_t dev) {
+    calllog(path,0,0);
     logger.write("[mknod]",path);
     try{
         if(!manager.file_create(path)){
@@ -101,6 +110,7 @@ static int fs_mknod(const char *path, mode_t mode, dev_t dev) {
  * mkdir
  */
 static int fs_mkdir(const char* path, mode_t) {
+    calllog(path,0);
     logger.write("[mkdir]", path);
     try{
         if (!manager.dir_create(path)){
@@ -119,6 +129,7 @@ static int fs_mkdir(const char* path, mode_t) {
  * open
  */
 static int fs_open(const char *path, struct fuse_file_info *fi) {
+    calllog(path,0);
 
     logger.write("[open]",path);
 
@@ -144,6 +155,8 @@ static int fs_open(const char *path, struct fuse_file_info *fi) {
  */
 static int fs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi) {
 
+    calllog(path,"buf",size,offset,0);
+
     logger.write("[read]",path,offset,size);
 
     auto file = manager.file_find(path).file;
@@ -152,16 +165,18 @@ static int fs_read(const char *path, char *buf, size_t size, off_t offset, struc
         logger.write("[read]","failed");
         return -ENOENT;
     }else{
+        if(size==0) return 0;
+
         off_t len = file->attr.st_size;
         if(offset < len){
             off_t max_size = len - offset;
             if(size>max_size){
-                memset(buf,0,size-max_size);
+                memset(buf+max_size,0,size-max_size);
                 size = (size_t)max_size;
             }
             // [start,end]
             size_t start_block = offset/block_size;
-            size_t end_block = (offset+size+block_size-1)/block_size - 1;
+            size_t end_block = (offset+size-1)/block_size;
 
             auto write_buf = (byte_t*)buf;
             for(size_t i=start_block;i<=end_block;i++){
@@ -178,7 +193,7 @@ static int fs_read(const char *path, char *buf, size_t size, off_t offset, struc
                 }else{
                     n = block_size;
                 }
-#ifdef VERBOSE
+#ifdef NAIVE
                 logger.write("[read]",(pb - driver.disk),n);
 #endif
                 memcpy(write_buf,pb,n);
@@ -197,6 +212,8 @@ static int fs_read(const char *path, char *buf, size_t size, off_t offset, struc
  */
 static int fs_write(const char *path, const char *buf, size_t size, off_t offset, struct fuse_file_info *fi) {
 
+    calllog(path,"buf",size,offset,0);
+
     logger.write("[write]",path,offset,size);
 
     auto file = manager.file_find(path).file;
@@ -205,29 +222,40 @@ static int fs_write(const char *path, const char *buf, size_t size, off_t offset
         return -ENOENT;
     }
 
+    if(size==0) return 0;
+
     size_t& old_n = file->block->count();
-    size_t  new_n = (offset+size)/block_size+1;
+    size_t  new_n = (offset+size-1)/block_size+1;
 
     try {
-        if(old_n<new_n) manager.allocate(file->block,new_n-old_n);
+
+        if(old_n<new_n){
+            manager.allocate(file->block,new_n-old_n);
+#ifdef VERBOSE
+            logger.write("[write]","blocks: ",file->block->count());
+#endif
+        }
 
         // [start,end]
         size_t start_block = offset/block_size;
-        size_t end_block = (offset+size+block_size-1)/block_size - 1;
+        size_t end_block = (offset+size-1)/block_size;
 
         auto read_buf = (byte_t*)buf;
         for(size_t i=start_block;i<=end_block;i++) {
             auto pb = file->block->get_block(i);
             size_t n;
-            if(i==start_block){
-                pb += offset - start_block*block_size;
-                n = (start_block+1)*block_size - offset;
+            if(start_block==end_block){
+                pb += offset;
+                n = size;
+            }else if(i==start_block){
+                pb += offset%block_size;
+                n = block_size - offset%block_size;
             }else if(i==end_block){
-                n = offset + size - end_block*block_size;
+                n = (offset + size)%block_size;
             }else{
                 n = block_size;
             }
-#ifdef VERBOSE
+#ifdef NAIVE
             logger.write("[write]",(pb - driver.disk),n);
 #endif
             memcpy(pb,read_buf,n);
@@ -248,6 +276,9 @@ static int fs_write(const char *path, const char *buf, size_t size, off_t offset
  * truncate
  */
 static int fs_truncate(const char *path, off_t size) {
+
+    calllog(path,size);
+
     logger.write("[truncate]",path,size);
 
     auto file = manager.file_find(path).file;
@@ -280,6 +311,9 @@ static int fs_truncate(const char *path, off_t size) {
  * unlink
  */
 static int fs_unlink(const char *path) {
+
+    calllog(path);
+
     logger.write("[unlink]",path);
     if(!manager.file_remove(path)){
         logger.write("[unlink]","failed");
@@ -293,6 +327,9 @@ static int fs_unlink(const char *path) {
  * rename
  */
 static int fs_rename(const char * old_name, const char *new_name){
+
+    calllog(old_name,new_name);
+
     logger.write("[rename]",old_name,new_name);
     auto file = manager.file_find(old_name).file;
     if(file.isnull() || file->is_dir()) {
@@ -300,6 +337,8 @@ static int fs_rename(const char * old_name, const char *new_name){
         return -ENOENT;
     }
     try {
+        fs_unlink(new_name);
+
         auto ret = fs_mknod(new_name,0,0);
         if(ret) return ret;
 
@@ -324,6 +363,9 @@ static int fs_rename(const char * old_name, const char *new_name){
  * rmdir
  */
 static int fs_rmdir (const char * dirname){
+
+    calllog(dirname);
+
     logger.write("[rmdir]",dirname);
     if(std::string(dirname) == "/") return 0;
     auto dir = manager.file_find(dirname).file;
@@ -344,6 +386,9 @@ static int fs_rmdir (const char * dirname){
  * chmod
  */
 static int fs_chmod (const char * fname, mode_t mode){
+
+    calllog(fname,mode);
+
     auto file = manager.file_find(fname).file;
     if(file.isnull()) return -ENOENT;
     file->attr.st_mode = mode;
@@ -354,6 +399,9 @@ static int fs_chmod (const char * fname, mode_t mode){
  * chown
  */
 static int fs_chown(const char * fname, uid_t uid, gid_t gid){
+
+    calllog(fname,uid,gid);
+
     auto file = manager.file_find(fname).file;
     if(file.isnull()) return -ENOENT;
     file->attr.st_gid = gid;
@@ -367,57 +415,27 @@ static int fs_chown(const char * fname, uid_t uid, gid_t gid){
 struct fuse_operations memfs_operations;
 #define regfun(fun) memfs_operations.fun = fs_##fun;
 
+void signal_handle(int sig_num)
+{
+    if(sig_num == SIGSEGV) {
+        assert(0);
+    } else if(sig_num == SIGABRT){
+        assert(0);
+    }
+}
 
+#ifdef DEBUG
+int filler(void *buf, const char *name,const struct stat *stbuf, off_t off){
+    return 0;
+}
+#endif
 
 int main(int argc, char* argv[]) {
 
+    signal(SIGSEGV,signal_handle);
+
 #ifdef DEBUG
-    fs_init(nullptr);
-    struct stat x;
-
-    // test0
-    char read[64];
-    char buf[] = "skysissi, I love you!\n";
-    char nothing[block_size+1];
-    memset(nothing,0xff,block_size);
-/*    fs_getattr("/",&x);
-    fs_getattr("/.Trash",&x);
-    fs_mkdir("/x",0);
-    fs_mknod("/x/sky",O_RDWR,0);
-    fs_mkdir("/x/y",0);
-    fs_rmdir("/x/y");
-    fs_mknod("/x/nice",O_RDWR,0);
-    fs_unlink("/x/nice");
-    fs_open("/x/sky", nullptr);
-    fs_write("/x/sky",buf, sizeof(buf),0, nullptr);
-    fs_rename("/x/sky","/skysissi");
-    fs_read("/skysissi",read, sizeof(buf),0, nullptr);
-    std::cout<<buf;
-    fs_unlink("/skysissi");
-    fs_getattr("/skysissi",&x);
-    fs_mkdir("/x/y",0);*/
-
-    // test2
-    fs_mkdir("/dir1",0);
-    fs_mkdir("/dir1/dir11",0);
-    fs_mknod("/dir1/x",0,0);
-    fs_write("/dir1/x",buf, sizeof(buf),0, nullptr);
-    fs_read("/dir/x",read, sizeof(buf),0, nullptr);
-    std::cout<<buf;
-    fs_rmdir("/dir1/dir11");
-    fs_unlink("/dir1/x");
-    fs_rmdir("/dir1");
-    fs_mkdir("/.git",0);
-    fs_mkdir("/.git/obj",0);
-    fs_mkdir("/.git/obj/pack",0);
-    fs_mkdir("/.git/obj/pack/s",0);
-    fs_mkdir("/.git/obj/pack/s/x",0);
-    fs_mkdir("/.git/obj/pack/s/x/uu",0);
-    fs_mkdir("/.git/obj/pack/s/x/uu/y",0);
-    fs_mknod("/.git/obj/pack/s/x/uu/y/bugfile",0,0);
-    for(int i=0;i<256;i++){
-        fs_write("/.git/obj/pack/s/x/uu/y/bugfile",nothing,block_size,i*block_size, nullptr);
-    }
+    #include "test_code/test4.h"
     return 0;
 #else
     regfun(init);

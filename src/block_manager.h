@@ -45,7 +45,7 @@ class block_manager {
 
         if(block.count >= block_meta::max_nodes) throw std::bad_alloc();
 
-        auto ret = pointer<block_node> {VADDR(p_node->start,block_meta,nodes[block.count])};
+        auto ret = pointer<block_node> {VADDR(block.index,block_meta,nodes[block.count])};
         block.count++;
 
         return ret;
@@ -62,7 +62,8 @@ class block_manager {
         auto& block = *driver.get_block<block_meta>(p_node->start);
         if(block.count > block_meta::max_nodes/2 && !in_enough_meta){
             in_enough_meta = true;
-            allocate(p_meta_head,block_meta::blocks_in_meta);
+            auto i_new_meta = allocate(p_meta_head,block_meta::blocks_in_meta)->next->start;
+            driver.get_block<block_meta>(i_new_meta)->init(i_new_meta);
             in_enough_meta = false;
         }
     }
@@ -202,6 +203,10 @@ class block_manager {
      */
     void file_new(const struct stat &file, const char *filename) {
 
+#ifdef VERBOSE
+        logger.write("skiplist",dump_skip());
+#endif
+
         // write information
         auto dummy = allocate_node();
         dummy->init();
@@ -243,8 +248,7 @@ public:
     std::list<pointer<skipnode>> dir_list(const char* dirname);
     bool dir_create(const char *filename);
 
-    int dump();
-
+    std::string dump_skip();
     std::string dump_alloc();
 
     /**

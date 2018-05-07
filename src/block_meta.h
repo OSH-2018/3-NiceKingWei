@@ -53,22 +53,22 @@ struct block_list: public block_node {
     }
 
     T* get_block(size_t index){
-        if(index<count()){
-            size_t ipos = count();
-            auto ppos = next;
-            // [0,ipos)
-            while(ipos > index){
-                size_t new_ipos = ipos - (ppos->end - ppos->start);
-                assert(new_ipos<ipos);
-                if(new_ipos <= index){
-                    size_t num = ppos->start + index - new_ipos;
-                    return (T*)driver.get_block_base(num);
-                }
-                ipos = new_ipos;
-                ppos = ppos->next;
+        assert(index<count());
+        size_t ipos = count();
+        auto ppos = next;
+        assert(!ppos.isnull());
+        // [0,ipos)
+        while(ipos > index){
+            size_t new_ipos = ipos - (ppos->end - ppos->start);
+            assert(new_ipos<ipos);
+            if(new_ipos <= index){
+                size_t num = ppos->start + index - new_ipos;
+                return (T*)driver.get_block_base(num);
             }
+            ipos = new_ipos;
+            ppos = ppos->next;
         }
-        return nullptr;
+        assert(0);
     }
 };
 
@@ -88,6 +88,7 @@ struct block_meta {
 
     block_node nodes[max_nodes];
 
+
     /**
      * init
      */
@@ -97,5 +98,7 @@ struct block_meta {
         return this;
     }
 };
+
+static_assert(sizeof(block_meta)<block_size*block_meta::blocks_in_meta);
 
 #endif //MEMFS_BLOCK_META_H

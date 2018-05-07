@@ -39,7 +39,7 @@ struct block_file {
 
     const static size_t blocks_in_file = 4;
 
-    const static size_t max_file = block_size*blocks_in_file / sizeof(struct stat) - 1;
+    const static size_t max_file = block_size*blocks_in_file / sizeof(filenode) - 1;
     filenode nodes[max_file] = {0};
 
     block_file* init(size_t index) {
@@ -57,6 +57,8 @@ struct block_file {
 
         return ret;
     }
+
 };
+static_assert(sizeof(block_file)<block_file::blocks_in_file*block_size);
 
 #endif //MEMFS_BLOCK_FILE_H

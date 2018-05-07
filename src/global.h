@@ -5,10 +5,10 @@
 #ifndef MEMFS_GLOBAL_H
 #define MEMFS_GLOBAL_H
 
-//#define DEBUG
+#define DEBUG
 #define NAIVE
 //#define DUMP
-#define VERBOSE
+//#define VERBOSE
 
 #include <iostream>
 #include <string>
@@ -25,7 +25,9 @@
 #include <climits>
 #include <cstring>
 #include <sys/mman.h>
-
+#include <execinfo.h>
+#include <csignal>
+#include <unistd.h>
 #include "log.h"
 
 #define OFFSET(type,member) ((size_t)(&(((type*)0)->member)))
@@ -36,11 +38,18 @@ const size_t block_size = 4096;         // 4 k
 const size_t block_count = 1024*128;    // 512 M
 
 #define assert(expr)\
-((expr)\
-?0\
-:(logger.write("assertion failed:",__STRING(expr),__FILE__,__LINE__),driver.dump()))
+if(!(expr)){\
+    logger.write("assertion failed:",__STRING(expr),__FILE__,__LINE__);\
+    driver.dump();\
+    exit(-1);\
+}
 
-
+#define assert_v(expr,...)\
+if(!(expr)){\
+    logger.write("assertion failed:",__STRING(expr),__FILE__,__LINE__,__VA_ARGS__);\
+    driver.dump();\
+    exit(-1);\
+}
 
 /**
  * dirver
@@ -69,6 +78,7 @@ public:
             logger.write("[panic]","map failed");
             throw std::bad_alloc();
         }
+        memset(base,0,block_size*reserved);
         for(size_t i=0;i<reserved;i++){
             disk[i] = base + i*block_size;
         }
@@ -76,7 +86,7 @@ public:
     }
 
     byte_t* get_block_base(size_t i){
-        assert(i>=0 && i<block_count);
+        assert_v(i>=0 && i<block_count,i);
 #ifndef NAIVE
         auto ret = disk.find(i);
         if(ret == disk.end()){
@@ -85,6 +95,7 @@ public:
                 logger.write("[panic]","map failed");
                 throw std::bad_alloc();
             }
+            memset(new_addr,0,block_size);
             disk[i] = new_addr;
             ret = disk.find(i);
         }
@@ -110,14 +121,25 @@ public:
     }
 
     int dump(){
-#ifndef NAIVE
-#else
-        std::ofstream fout("/home/nicekingwei/memfs.bin");
+        const size_t max_call = 1024;
+        void *buffer[max_call];
+        int n = backtrace(buffer, max_call);
+        char** strs = backtrace_symbols(buffer, n);
+
+        if (strs != nullptr) {
+            for(int i=0;i<n;i++)
+                logger.write(strs[i]);
+        }
+
+#ifdef DUMP
+#ifdef NAIVE
+        std::ofstream fout("memfs.bin");
         for(size_t i=0;i<block_count;i++){
             fout.write((char*)&disk[i],block_count);
         }
         fout.close();
         return 0;
+#endif
 #endif
     }
 };
@@ -151,7 +173,7 @@ struct pointer {
     }
 
     T& operator * () const {
-        assert(!isnull());
+        assert_v(!isnull(),"null pointer");
         return *((T*)(driver.get_block_base(base)+offset));
     }
 

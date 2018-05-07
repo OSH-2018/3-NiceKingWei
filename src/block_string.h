@@ -23,6 +23,8 @@ struct static_string{
     }
 
     void del(){
+        auto s = str();
+        s[0] = '$';
         n = SIZE_MAX;
     }
 
@@ -69,8 +71,8 @@ public:
      * @return null pointer if failed
      */
     pointer<static_string> write_str(const char* s) {
+        static const size_t max_cur = block_size*blocks_in_string - sizeof(block_string);
         size_t n = strlen(s);
-        size_t max_cur = block_size*blocks_in_string - array_offset();
         size_t size_s = sizeof_safe_str(n);
 
         // can write into this block
@@ -88,6 +90,7 @@ public:
             memcpy(start->str(),s,n);   // array
 
             cur = new_cur;
+            assert(cur < max_cur);
 
             return ret;
         } else {

@@ -1,4 +1,4 @@
-static char buffer[5000];
+static char buffer[50000];
 fs_init(0);
 fs_getattr("/.Trash",0);
 fs_getattr("/.Trash-1000",0);

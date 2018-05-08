@@ -2,20 +2,7 @@
 
 #include "block_manager.h"
 #include "log.h"
-
-std::mutex global_mtx;
-
-struct get_lock{
-
-    get_lock(){
-        global_mtx.lock();
-    }
-
-    virtual ~get_lock(){
-        global_mtx.unlock();
-    }
-};
-
+#include "lock.h"
 
 
 /**
@@ -49,6 +36,9 @@ static int fs_getattr(const char* path, struct stat* stbuf) {
     auto file = manager.file_find(path).file;
 
     if(file.isnull()){
+#ifdef VERBOSE
+        logger.write("[getattr]","failed");
+#endif
         return -ENOENT;
     } else {
         *stbuf = file->attr;
@@ -115,7 +105,6 @@ static int fs_mknod(const char *path, mode_t mode, dev_t dev) {
         logger.write("[mknod]","failed");
         return -ENOSPC;
     }
-    logger.write("[mknod]","succeed");
     return 0;
 }
 
@@ -194,24 +183,19 @@ static int fs_read(const char *path, char *buf, size_t size, off_t offset, struc
 
             auto write_buf = (byte_t*)buf;
             for(size_t i=start_block;i<=end_block;i++){
+
                 auto pb = file->block->get_block(i);
-                size_t n;
-                if(start_block==end_block){
-                    pb += offset;
-                    n = size;
-                }else if(i==start_block){
-                    pb += offset%block_size;
-                    n = block_size - offset%block_size;
-                }else if(i==end_block){
-                    n = (offset + size)%block_size;
-                }else{
-                    n = block_size;
-                }
+
+                size_t start_byte=0,end_byte=block_size;
+                if(i==start_block) start_byte = offset%block_size;
+                if(i==end_block) end_byte = (offset+size)%block_size;
+                if(end_byte==0) end_byte=block_size;
 #ifdef NAIVE
-                logger.write("[read]",(pb - driver.disk),n);
+                logger.write("[read]",(pb - driver.disk),end_byte-start_byte);
 #endif
-                memcpy(write_buf,pb,n);
-                write_buf += n;
+                memcpy(write_buf,pb+start_byte,end_byte-start_byte);
+                write_buf += end_byte-start_byte;
+
             }
             return (int)size;
         }
@@ -220,6 +204,10 @@ static int fs_read(const char *path, char *buf, size_t size, off_t offset, struc
 }
 
 
+size_t rich_alloc(size_t old_n,size_t new_n){
+    // new_n > old_n
+    return std::max(new_n,old_n+old_n/8);
+}
 
 /**
  * write
@@ -244,7 +232,7 @@ static int fs_write(const char *path, const char *buf, size_t size, off_t offset
     try {
 
         if(old_n<new_n){
-            manager.allocate(file->block,new_n-old_n);
+            manager.allocate(file->block,rich_alloc(old_n,new_n));
 #ifdef VERBOSE
             logger.write("[write]","blocks: ",file->block->count());
 #endif
@@ -257,23 +245,16 @@ static int fs_write(const char *path, const char *buf, size_t size, off_t offset
         auto read_buf = (byte_t*)buf;
         for(size_t i=start_block;i<=end_block;i++) {
             auto pb = file->block->get_block(i);
-            size_t n;
-            if(start_block==end_block){
-                pb += offset;
-                n = size;
-            }else if(i==start_block){
-                pb += offset%block_size;
-                n = block_size - offset%block_size;
-            }else if(i==end_block){
-                n = (offset + size)%block_size;
-            }else{
-                n = block_size;
-            }
+
+            size_t start_byte=0,end_byte=block_size;
+            if(i==start_block) start_byte = offset%block_size;
+            if(i==end_block) end_byte = (offset+size)%block_size;
+            if(end_byte==0) end_byte = block_size;
 #ifdef NAIVE
-            logger.write("[write]",(pb - driver.disk),n);
+            logger.write("[write]",(pb - driver.disk),end_byte-start_byte);
 #endif
-            memcpy(pb,read_buf,n);
-            read_buf += n;
+            memcpy(pb+start_byte,read_buf,end_byte-start_byte);
+            read_buf += end_byte-start_byte;
         }
     }catch(std::bad_alloc& e){
         logger.write("[write]","failed");
@@ -328,7 +309,6 @@ static int fs_unlink(const char *path) {
 
     calllog(path);
 
-    logger.write("[unlink]",path);
     if(!manager.file_remove(path)){
         logger.write("[unlink]","failed");
         return -ENOENT;
@@ -347,6 +327,7 @@ static int fs_link(const char *dest, const char *linkname){
     try {
         manager.file_hardlink(dest,linkname);
     }catch(std::bad_alloc&){
+        logger.write("[link]","failed");
         return -ENOSPC;
     }
 
@@ -363,9 +344,17 @@ static int fs_rename(const char * old_name, const char *new_name){
 
     global_mtx.unlock();
 
-    if(auto r1 = fs_link(old_name,new_name)) return r1;
+    manager.file_remove(new_name);
 
-    if(auto r2 = fs_unlink(old_name)) return r2;
+    if(auto r1 = fs_link(old_name,new_name)) {
+        logger.write("[rename]","failed");
+        return r1;
+    }
+
+    if(auto r2 = fs_unlink(old_name)) {
+        logger.write("[rename]","failed");
+        return r2;
+    }
 
     return 0;
 }
@@ -432,36 +421,49 @@ static int fs_chown(const char * fname, uid_t uid, gid_t gid){
 static int fs_readlink(const char *path, char *buf, size_t size){
     calllog(path,"ret",size);
     auto file = manager.file_find(path).file;
-    if(file.isnull()) return -ENOENT;
-    if(file->is_symlink()) return -EACCES;
 
-    // read
-    off_t len = file->attr.st_size;
-    off_t max_size = len;
-    if(size>max_size){
-        memset(buf+max_size,0,size-max_size);
-        size = (size_t)max_size;
+    if(file.isnull()){
+        logger.write("[readlink]","failed");
+        return -ENOENT;
     }
-    // [start,end]
-    size_t start_block = 0;
-    size_t end_block = (size-1)/block_size;
 
-    auto write_buf = (byte_t*)buf;
-    for(size_t i=start_block;i<=end_block;i++){
-        auto pb = file->block->get_block(i);
-        size_t n;
-        if(start_block==end_block){
-            n = size;
-        }else if(i==start_block){
-            n = block_size;
-        }else if(i==end_block){
-            n = size%block_size;
-        }else{
-            n = block_size;
+    if(file->is_symlink()){
+        logger.write("[readlink]","failed");
+        return -EACCES;
+    }
+
+    try{
+        // read
+        off_t max_size = file->attr.st_size;
+        if(size>max_size){
+            memset(buf+max_size,0,size-max_size);
+            size = (size_t)max_size;
         }
-        memcpy(write_buf,pb,n);
-        write_buf += n;
+        // [start,end]
+        size_t start_block = 0;
+        size_t end_block = (size-1)/block_size;
+
+        auto write_buf = (byte_t*)buf;
+        for(size_t i=start_block;i<=end_block;i++){
+            auto pb = file->block->get_block(i);
+            size_t n;
+            if(start_block==end_block){
+                n = size;
+            }else if(i==start_block){
+                n = block_size;
+            }else if(i==end_block){
+                n = size%block_size;
+            }else{
+                n = block_size;
+            }
+            memcpy(write_buf,pb,n);
+            write_buf += n;
+        }
+    }catch(std::bad_alloc&){
+        logger.write("[readlink]","failed");
+        return -ENOSPC;
     }
+
     return 0;
 }
 
@@ -475,17 +477,21 @@ static int fs_symlink(const char *dest, const char *symname){
 
     global_mtx.unlock();
     auto r1 = fs_mknod(symname,0,0);
-    if(r1) return r1;
+    if(r1) {
+        logger.write("[symlink]","failed");
+        return r1;
+    }
 
     auto file = manager.file_find(symname).file;
     assert(!file.isnull());
     file->mk_symlink();
 
-    std::string sd = "/";
-    sd+=dest;
+    auto r2 = fs_write(symname,dest,strlen(dest),0, nullptr);
+    if(r2<0) {
+        logger.write("[symlink]","failed");
+        return r2;
+    }
 
-    auto r2=fs_write(symname,sd.c_str(),sd.length(),0, nullptr);
-    if(r2<0) return r2;
 
     return 0;
 }
@@ -533,7 +539,7 @@ int main(int argc, char* argv[]) {
     signal(SIGSEGV,signal_handle);
 
 #ifdef DEBUG
-    #include "test_code/test4.h"
+    #include "test_code/test1.h"
     return 0;
 #else
     regfun(init);

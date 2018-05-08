@@ -5,15 +5,22 @@
 #ifndef MEMFS_LOG_H
 #define MEMFS_LOG_H
 
-#define DEBUG
+//#define DEBUG
 //#define NAIVE
 //#define DUMP
 //#define VERBOSE
+#define RELEASE
 
 #include <fstream>
 #include <iostream>
-#include <mutex>
+#include "lock.h"
 
+#ifdef RELEASE
+struct log{
+    template<typename...T> int write(T...){return 0;}
+    template<typename...T> int write_fun(T...){return 0;}
+};
+#else
 struct log{
     std::ofstream fout;
 
@@ -40,7 +47,6 @@ struct log{
 #else
         write_(fout,args...);
 #endif
-//        mtx.unlock();
         return 0;
     };
 
@@ -83,9 +89,9 @@ struct log{
         return 0;
     }
 };
-
+#endif
 extern log logger;
 
-#define calllog(...) get_lock QAQ;logger.write_fun(__FUNCTION__,__VA_ARGS__)
+#define calllog(...) global_lock QAQ;logger.write_fun(__FUNCTION__,__VA_ARGS__)
 
 #endif //MEMFS_LOG_H

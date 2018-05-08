@@ -32,7 +32,7 @@
 
 typedef uint8_t byte_t;
 const size_t block_size = 4096;         // 4 k
-const size_t block_count = 1024*128;    // 512 M
+const size_t block_count = 1024*512;    // 2 G
 
 #define assert(expr)\
 if(!(expr)){\
@@ -114,6 +114,8 @@ public:
             munmap(r->second,block_size);
             disk.erase(r);
         }
+#else
+        memset(&disk[n*block_size],0,block_size);
 #endif
     }
 
@@ -200,8 +202,8 @@ struct utils{
     }
 
     inline static bool path_is_valid(const std::string& s){
-        const char* reg = "^(/[^/ ]*)+/?$";
-        return std::regex_match(s,std::regex(reg)) && s.back()!='/';
+        const char* reg = R"(^(\/[^\/ ][^\\/:"*?<>|]*)+$)";
+        return std::regex_match(s,std::regex(reg));
     }
 };
 

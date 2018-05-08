@@ -73,6 +73,8 @@ public:
     pointer<static_string> write_str(const char* s) {
         static const size_t max_cur = block_size*blocks_in_string - sizeof(block_string);
         size_t n = strlen(s);
+        if(n>=block_size/4*3) throw std::bad_alloc();
+
         size_t size_s = sizeof_safe_str(n);
 
         // can write into this block

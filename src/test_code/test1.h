@@ -23,7 +23,11 @@ fs_mkdir("/.git/obj/pack/s/x",0);
 fs_mkdir("/.git/obj/pack/s/x/uu",0);
 fs_mkdir("/.git/obj/pack/s/x/uu/y",0);
 fs_mknod("/.git/obj/pack/s/x/uu/y/bugfile",0,0);
-for(int i=0;i<256;i++){
-fs_write("/.git/obj/pack/s/x/uu/y/bugfile",nothing,block_size-1,i*block_size, nullptr);
-fs_write("/.git/obj/pack/s/x/uu/y/bugfile",nothing,1,i*block_size+block_size-1, nullptr);
+for(int i=0;i<64*256;i++){
+    if(i==494){
+        int x;
+        x++;
+    }
+    fs_write("/.git/obj/pack/s/x/uu/y/bugfile",nothing,block_size-1,i*block_size, nullptr);
+    fs_write("/.git/obj/pack/s/x/uu/y/bugfile",nothing,1,i*block_size+block_size-1, nullptr);
 }

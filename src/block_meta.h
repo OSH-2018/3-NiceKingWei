@@ -79,7 +79,7 @@ struct block_list: public block_node {
  */
 struct block_meta {
 
-    static const size_t blocks_in_meta = 4;
+    static const size_t blocks_in_meta = 1;
     static const auto max_nodes = block_size*blocks_in_meta / sizeof(block_node) - 2; // 2: space for header of block meta
 
     // data

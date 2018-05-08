@@ -77,7 +77,7 @@ struct block_skiplist {
     size_t index = 0;
     size_t count = 0;
 
-    const static size_t blocks_in_skiplist = 4;
+    const static size_t blocks_in_skiplist = 1;
 
     const static size_t max_skip = block_size*blocks_in_skiplist / sizeof(skipnode) - 1;
     skipnode nodes[max_skip];

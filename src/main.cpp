@@ -338,38 +338,35 @@ static int fs_unlink(const char *path) {
 
 
 /**
+ * link
+ */
+static int fs_link(const char *dest, const char *linkname){
+
+    calllog(dest,linkname);
+
+    try {
+        manager.file_hardlink(dest,linkname);
+    }catch(std::bad_alloc&){
+        return -ENOSPC;
+    }
+
+    return 0;
+}
+
+
+/**
  * rename
  */
 static int fs_rename(const char * old_name, const char *new_name){
 
     calllog(old_name,new_name);
 
-    logger.write("[rename]",old_name,new_name);
-    auto file = manager.file_find(old_name).file;
-    if(file.isnull() || file->is_dir()) {
-        logger.write("[rename]", "failed");
-        return -ENOENT;
-    }
-    try {
-        global_mtx.unlock();
-        fs_unlink(new_name);
-        auto ret = fs_mknod(new_name,0,0);
+    global_mtx.unlock();
 
-        if(ret) return ret;
+    if(auto r1 = fs_link(old_name,new_name)) return r1;
 
-        auto new_file = manager.file_find(new_name).file;
-        assert(!new_file.isnull());
+    if(auto r2 = fs_unlink(old_name)) return r2;
 
-        new_file->attr = file->attr;
-        new_file->block = file->block;
-
-        file->block = null_pointer;
-        manager.file_remove(old_name);
-
-    }catch(std::bad_alloc&){
-        logger.write("[rename]","failed");
-        return -ENOSPC;
-    }
     return 0;
 }
 
@@ -408,6 +405,7 @@ static int fs_chmod (const char * fname, mode_t mode){
     auto file = manager.file_find(fname).file;
     if(file.isnull()) return -ENOENT;
     file->attr.st_mode = mode;
+
     return 0;
 }
 
@@ -423,6 +421,7 @@ static int fs_chown(const char * fname, uid_t uid, gid_t gid){
     if(file.isnull()) return -ENOENT;
     file->attr.st_gid = gid;
     file->attr.st_uid = uid;
+
     return 0;
 }
 
@@ -493,23 +492,6 @@ static int fs_symlink(const char *dest, const char *symname){
 
 
 /**
- * link
- */
-static int fs_link(const char *dest, const char *linkname){
-
-    calllog(dest,linkname);
-
-    try {
-        manager.file_hardlink(dest,linkname);
-    }catch(std::bad_alloc&){
-        return -ENOSPC;
-    }
-
-    return 0;
-}
-
-
-/**
  * utimens
  */
 static int fs_utimens(const char *path, const struct timespec tv[2]){
@@ -551,7 +533,7 @@ int main(int argc, char* argv[]) {
     signal(SIGSEGV,signal_handle);
 
 #ifdef DEBUG
-    #include "test_code/test2.h"
+    #include "test_code/test4.h"
     return 0;
 #else
     regfun(init);

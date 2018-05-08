@@ -169,11 +169,10 @@ bool block_manager::file_remove(const char* filename) {
     for(auto& pre : pre_list) {
         auto to_del = pre->next;
         if(EQ(to_del,filename)){
-            if(to_del->file->is_dir()) return false;
             if(!succ){
                 // delete filename and filenode
                 to_del_filename = to_del->filename;
-                if(--to_del->file->attr.st_nlink == 0){
+                if(to_del->file->is_dir() || --to_del->file->attr.st_nlink == 0){
                     free(to_del->file->block);
                     to_del->file->del();
                 }

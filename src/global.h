@@ -69,7 +69,7 @@ public:
 
     void init(){
 #ifndef NAIVE
-        size_t reserved = 16;
+        size_t reserved = 4;
         auto base = (byte_t*)mmap(nullptr,block_size*reserved,PROT_READ|PROT_WRITE,MAP_PRIVATE | MAP_ANONYMOUS,-1,0);
         if(base == MAP_FAILED){
             logger.write("[panic]","map failed");
@@ -166,7 +166,7 @@ struct pointer {
     }
 
     bool isnull() const{
-        return base==SIZE_MAX&&offset==SIZE_MAX;
+        return base==SIZE_MAX&&offset==SIZE_MAX&&offset>=block_size;
     }
 
     T& operator * () const {

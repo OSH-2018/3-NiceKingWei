@@ -58,7 +58,7 @@ class block_string {
 
 public:
 
-    static const size_t blocks_in_string = 4;
+    static const size_t blocks_in_string = 1;
 
     block_string* init(size_t index){
         this->index = index;

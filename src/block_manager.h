@@ -148,7 +148,7 @@ class block_manager {
 
         pointer<block_node>(p_head)->del();
 
-        if(random()%4==0) merge_freeblocks();
+        if(random()%16==0) merge_freeblocks();
     }
 
 

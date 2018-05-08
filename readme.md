@@ -14,6 +14,16 @@
 
 * 编译环境：支持 c++11 的 c++ 编译器，cmake 3.10 以上
 
+* 编译选项在 compile_config.h 中
+
+  默认编译选项为 RELEASE 和 LOCK
+
+  * ```
+    #define NAIVE			// NAIVE 模式静态分配空间
+    #define RELEASE			// RELEASE 模式不会产生 log
+    #define LOCK			// LOCK 模式有全局锁
+    ```
+
 * 运行环境： `linux` 操作系统 和 `fuse 2.6` 以上
 
 * 测试

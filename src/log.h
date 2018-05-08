@@ -6,14 +6,15 @@
 #define MEMFS_LOG_H
 
 //#define DEBUG
-//#define NAIVE
 //#define DUMP
 //#define VERBOSE
-#define RELEASE
+
+
 
 #include <fstream>
 #include <iostream>
 #include "lock.h"
+#include "compile_config.h"
 
 #ifdef RELEASE
 struct log{

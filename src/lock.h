@@ -7,8 +7,6 @@
 
 #include <mutex>
 
-#define LOCK
-
 struct fake_lock{
     void lock(){}
     void unlock(){}

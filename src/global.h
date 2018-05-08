@@ -26,13 +26,15 @@
 #include <csignal>
 #include <unistd.h>
 #include "log.h"
+#include "compile_config.h"
+
 
 #define OFFSET(type,member) ((size_t)(&(((type*)0)->member)))
 #define VADDR(index,type,member) (index)+OFFSET(type,member)/block_size,OFFSET(type,member)%block_size
 
 typedef uint8_t byte_t;
 const size_t block_size = 4096;         // 4 k
-const size_t block_count = 1024*512;    // 2 G
+const size_t block_count = 1024*256;    // 1 G
 
 #define assert(expr)\
 if(!(expr)){\

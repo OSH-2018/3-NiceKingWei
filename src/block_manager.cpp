@@ -333,6 +333,7 @@ for(size_t i=node->start;i<node->end;i++){\
 std::string block_manager::dump_alloc() {
     std::map<int,bool> binmap;
     std::stringstream ret;
+    ret<<*p_free_block_count<<"\n";
     ret<<"free:";
     for(auto node = p_free_head->next;!node.isnull();node=node->next){
         output_node(node);

@@ -34,7 +34,6 @@ void block_manager::init_zero() {
     b_meta->nodes[18] = block_node {0,block_meta::blocks_in_meta,null_pointer};
     p_meta_head->next = pointer<block_node> {VADDR(0,block_meta,nodes[18])};
 
-    *p_free_block_count = block_count;
 
     logger.write("[init zero]","alloc");
 
@@ -44,6 +43,8 @@ void block_manager::init_zero() {
     auto i_string = allocate(p_string_head, block_string::blocks_in_string)->next->start;
     auto i_file = allocate(p_file_head, block_file::blocks_in_file)->next->start;
     auto i_skiplist = allocate(p_skiplist_head, block_skiplist::blocks_in_skiplist)->next->start;
+
+    *p_free_block_count = block_count - block_meta::blocks_in_meta -  block_string::blocks_in_string -  block_file::blocks_in_file - block_skiplist::blocks_in_skiplist;
 
     logger.write("[init zero]",b_meta->index,i_string,i_file,i_skiplist);
 
@@ -74,10 +75,6 @@ void block_manager::init_zero() {
  * @return skipnode on the bottom; null pointer in fileds if failed
  */
 skipnode block_manager::file_find(const char *filename) {
-
-#ifdef VERBOSE
-    logger.write(dump_alloc());
-#endif
 
     auto failed = skipnode {null_pointer,null_pointer,null_pointer,null_pointer};
 

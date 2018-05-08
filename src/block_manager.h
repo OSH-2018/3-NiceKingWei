@@ -14,7 +14,6 @@
 
 // allocation
 const pointer<size_t> p_free_block_count = {VADDR(0,block_meta,nodes[0])};
-
 const pointer<block_list<byte_t>> p_free_head = {VADDR(0,block_meta,nodes[1])};
 const pointer<block_list<block_meta>> p_meta_head = {VADDR(0,block_meta,nodes[2])};
 const pointer<block_list<block_string>> p_string_head = {VADDR(0,block_meta,nodes[3])};
@@ -93,35 +92,23 @@ class block_manager {
      */
     void merge_freeblocks(){
 
-//        // bubble sort
-//        for(auto s= p_free_head->next;!s.isnull();s=s->next){
-//            for(auto p=s;!p->next.isnull();p=p->next){
-//                auto q = p->next;
-//                if(q->start < p->start){
-//                    std::swap(p->start,q->start);
-//                    std::swap(p->end,q->end);
-//                    std::swap(p->next,q->next);
-//                }
-//            }
-//        }
-//
-//        // merge
-//        for(auto p= p_free_head->next;!p->next.isnull();p=p->next){
-//            auto q = p->next;
-//            if(q->start == p->end){
-//                auto new_start = p->start;
-//                auto new_end = q->end;
-//                auto new_size = new_end - new_start;
-//
-//                // proper block
-//                if(new_end%new_size == 0){
-//                    p->next = q->next;
-//                    p->start = new_start;
-//                    p->end = new_end;
-//                    q->del();
-//                }
-//            }
-//        }
+        // merge
+        for(auto p = p_free_head->next;!(p->next.isnull());p = p->next){
+            auto q = p->next;
+            if(p->end == q->start){
+                auto new_start = p->start;
+                auto new_end = q->end;
+                auto new_size = new_end - new_start;
+
+                // proper block
+                if(new_end%new_size == 0){
+                    p->next = q->next;
+                    p->start = new_start;
+                    p->end = new_end;
+                    q->del();
+                }
+            }
+        }
     }
 
     /**
@@ -129,18 +116,31 @@ class block_manager {
      */
     template<typename T>
     void free(pointer<block_list<T>> p_head) {
-        if(p_head.isnull()) return;
 
-        pointer<block_node> p_tail(p_head);
-        while(!p_tail->next.isnull()){
-            p_tail=p_tail->next;
-            for(auto i=p_tail->start;i<p_tail->end;i++){
-                driver.free(i);
+        if(p_head.isnull() || p_head->next.isnull()) return;
+
+#ifdef VERBOSE
+        if(*p_free_block_count!=0) logger.write(dump_alloc());
+#endif
+
+        auto to_del = p_head->next;
+        while(!(to_del.isnull())){
+            assert(to_del->start!=to_del->end);
+            auto next_del = to_del->next;
+            bool deleted = false;
+            for(auto i=to_del->start;i<to_del->end;i++) driver.free(i);
+            for(auto pre = pointer<block_node>(p_free_head);!(pre.isnull());pre = pre->next){
+                if(pre->next.isnull() || pre->next->start >= to_del->end){
+                    to_del->next = pre->next;
+                    pre->next = to_del;
+                    deleted = true;
+                    break;
+                }
             }
+            assert(deleted);
+            to_del = next_del;
         }
 
-        p_tail->next = p_free_head->next;
-        p_free_head->next = p_head->next;
         *p_free_block_count += p_head->count();
 
         pointer<block_node>(p_head)->del();
@@ -268,8 +268,11 @@ public:
     template<typename T>
     pointer<block_list<T>> allocate(pointer<block_list<T>> p_head,size_t total_size){
 
+#ifdef VERBOSE
+        if(*p_free_block_count!=0) logger.write(dump_alloc());
+#endif
         // preprocess
-        if(total_size > *p_free_block_count)
+        if(*p_free_block_count!=0 && total_size > *p_free_block_count)
             throw std::bad_alloc();
 
         alloc_enough_meta();
@@ -281,6 +284,8 @@ public:
         while(!to_alloc_list.empty()){
 
             auto size = to_alloc_list.back();
+            assert(size!=0);
+
             to_alloc_list.pop_back();
 
             // try to allocate continuous blocks
@@ -331,7 +336,7 @@ public:
         }
 
         p_head->count() += total_size;
-        *p_free_block_count -= total_size;
+        if(*p_free_block_count>0) *p_free_block_count -= total_size;
 
         return p_head;
     }

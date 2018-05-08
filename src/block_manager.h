@@ -101,7 +101,7 @@ class block_manager {
                 auto new_size = new_end - new_start;
 
                 // proper block
-                if(new_end%new_size == 0){
+                if(new_size == 2*(p->end-p->start)){
                     p->next = q->next;
                     p->start = new_start;
                     p->end = new_end;

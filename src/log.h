@@ -5,11 +5,11 @@
 #ifndef MEMFS_LOG_H
 #define MEMFS_LOG_H
 
-#define DEBUG
+//#define DEBUG
 //#define NAIVE
 //#define DUMP
-#define VERBOSE
-//#define RELEASE
+//#define VERBOSE
+#define RELEASE
 
 #include <fstream>
 #include <iostream>

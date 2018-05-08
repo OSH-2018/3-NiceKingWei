@@ -169,13 +169,16 @@ bool block_manager::file_remove(const char* filename) {
     for(auto& pre : pre_list) {
         auto to_del = pre->next;
         if(EQ(to_del,filename)){
+            if(to_del->file->is_dir()) return false;
             if(!succ){
                 // delete filename and filenode
                 to_del_filename = to_del->filename;
-                free(to_del->file->block);
-                to_del->file->del();
+                if(--to_del->file->attr.st_nlink == 0){
+                    free(to_del->file->block);
+                    to_del->file->del();
+                }
+                succ = true;
             }
-            succ = true;
             // delete skipnode
             pre->next = to_del->next;
             to_del->del();
@@ -269,6 +272,7 @@ bool block_manager::dir_create(const char* s){
         new_file.st_blksize = 0;
     }
     new_file.st_size = new_file.st_blocks*new_file.st_blksize;
+    new_file.st_nlink = 2;
     new_file.st_mode = S_IFDIR | 0755;
     file_new(new_file,filename.c_str());
 
@@ -299,7 +303,8 @@ bool block_manager::file_create(const char* s){
     new_file.st_blksize = block_size;
     new_file.st_blocks = 0;
     new_file.st_size = 0;
-    new_file.st_mode = S_IFREG | 0644;
+    new_file.st_nlink = 1;
+    new_file.st_mode = S_IFREG | 0664;
     file_new(new_file,s);
 
     return true;
@@ -365,4 +370,20 @@ std::string block_manager::dump_alloc() {
         ret<<"\n";
     }
     return ret.str();
+}
+
+bool block_manager::file_hardlink(const char *dest, const char *linkname) {
+
+    auto filenode = manager.file_find(dest);
+    if(filenode.file.isnull() || filenode.file->is_dir()) return false;
+
+    filenode.file->attr.st_nlink++;
+
+    auto proto = filenode;
+    proto.next = proto.down = null_pointer;
+    proto.filename = write_str(linkname);
+
+    file_new(proto);
+
+    return true;
 }

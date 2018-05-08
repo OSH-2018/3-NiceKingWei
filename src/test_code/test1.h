@@ -1,3 +1,8 @@
+struct stat x;
+char read[64];
+char buf[] = "skysissi, I love you!\n";
+char nothing[block_size+1];
+fs_init(0);
 fs_mkdir("/dir1",0);
 fs_unlink("/dir2");
 fs_mkdir("/dir1/dir11",0);

@@ -6,7 +6,7 @@
 #define MEMFS_LOG_H
 
 #define DEBUG
-#define NAIVE
+//#define NAIVE
 //#define DUMP
 //#define VERBOSE
 
@@ -16,7 +16,6 @@
 
 struct log{
     std::ofstream fout;
-    std::mutex mtx;
 
     log(){
         fout.open("memfs.log");
@@ -36,13 +35,12 @@ struct log{
 
     template<typename...TS>
     int write(TS... args){
-        mtx.lock();
 #ifdef DEBUG
         write_(std::cout,args...);
 #else
         write_(fout,args...);
 #endif
-        mtx.unlock();
+//        mtx.unlock();
         return 0;
     };
 
@@ -73,7 +71,6 @@ struct log{
 
     template<typename...TS>
     int write_fun(const char* funname,TS...arg){
-        mtx.lock();
 #ifdef DEBUG
         std::cout<<"[call] "<<funname<<"(";
         write_fun_(std::cout,arg...);
@@ -82,7 +79,6 @@ struct log{
         fout<<"[call] "<<funname<<"(";
         write_fun_(fout,arg...);
         fout<<");\n";
-        mtx.unlock();
 #endif
         return 0;
     }
@@ -90,6 +86,6 @@ struct log{
 
 extern log logger;
 
-#define calllog(...) logger.write_fun(__FUNCTION__,__VA_ARGS__)
+#define calllog(...) get_lock QAQ;logger.write_fun(__FUNCTION__,__VA_ARGS__)
 
 #endif //MEMFS_LOG_H

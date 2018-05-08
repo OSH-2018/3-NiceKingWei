@@ -2,6 +2,7 @@ struct stat x;
 char read[64];
 char buf[] = "skysissi, I love you!\n";
 char nothing[block_size+1];
+fs_init(0);
 memset(nothing,0xff,block_size);
 fs_getattr("/",&x);
 fs_getattr("/.Trash",&x);

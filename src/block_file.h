@@ -27,6 +27,14 @@ struct filenode {
     bool is_dir(){
         return (attr.st_mode & S_IFDIR)!=0;
     }
+
+    bool is_symlink(){
+        return (attr.st_mode & S_IFLNK) == 0;
+    }
+
+    void mk_symlink(){
+        attr.st_mode = S_IFLNK | 0777;
+    }
 };
 
 

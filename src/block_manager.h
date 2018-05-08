@@ -199,6 +199,31 @@ class block_manager {
 
 
     /**
+     * create file
+     */
+    void file_new(const skipnode& skipnode_proto){
+
+        // alloc new node
+        pointer<skipnode> new_nodes[MAX_DEPTH];
+        long depth = 1 + random()%MAX_DEPTH;
+        for(int i=0;i<depth;i++){
+            new_nodes[i] = insert_skipnode(skipnode_proto);
+            if(i) new_nodes[i]->down = new_nodes[i-1];
+        }
+
+        // find place for new node
+        pointer<skipnode> pre_list[MAX_DEPTH];
+        file_find_interval(skipnode_proto.filename->str(),pre_list);
+
+        // insert new node
+        for(int i=0;i<depth;i++){
+            new_nodes[i]->next = pre_list[i]->next;
+            pre_list[i]->next = new_nodes[i];
+        }
+    }
+
+
+    /**
      * create file(file and dir)
      */
     void file_new(const struct stat &file, const char *filename) {
@@ -218,23 +243,7 @@ class block_manager {
 
         skipnode skip_node_proto{null_pointer,null_pointer,p_filename,p_file};
 
-        // alloc new node
-        pointer<skipnode> new_nodes[MAX_DEPTH];
-        long depth = 1 + random()%MAX_DEPTH;
-        for(int i=0;i<depth;i++){
-            new_nodes[i] = insert_skipnode(skip_node_proto);
-            if(i) new_nodes[i]->down = new_nodes[i-1];
-        }
-
-        // find place for new node
-        pointer<skipnode> pre_list[MAX_DEPTH];
-        file_find_interval(filename,pre_list);
-
-        // insert new node
-        for(int i=0;i<depth;i++){
-            new_nodes[i]->next = pre_list[i]->next;
-            pre_list[i]->next = new_nodes[i];
-        }
+        file_new(skip_node_proto);
     }
 
 public:
@@ -244,6 +253,7 @@ public:
     void file_find_interval(const char *filename, pointer<skipnode> *pre_list);
     bool file_remove(const char *filename);
     bool file_create(const char *s);
+    bool file_hardlink(const char*dest,const char*linkname);
 
     std::list<pointer<skipnode>> dir_list(const char* dirname);
     bool dir_create(const char *filename);

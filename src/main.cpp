@@ -3,6 +3,20 @@
 #include "block_manager.h"
 #include "log.h"
 
+std::mutex global_mtx;
+
+struct get_lock{
+
+    get_lock(){
+        global_mtx.lock();
+    }
+
+    virtual ~get_lock(){
+        global_mtx.unlock();
+    }
+};
+
+
 
 /**
  * init
@@ -337,9 +351,10 @@ static int fs_rename(const char * old_name, const char *new_name){
         return -ENOENT;
     }
     try {
+        global_mtx.unlock();
         fs_unlink(new_name);
-
         auto ret = fs_mknod(new_name,0,0);
+
         if(ret) return ret;
 
         auto new_file = manager.file_find(new_name).file;
@@ -382,6 +397,7 @@ static int fs_rmdir (const char * dirname){
     return 0;
 }
 
+
 /**
  * chmod
  */
@@ -394,6 +410,7 @@ static int fs_chmod (const char * fname, mode_t mode){
     file->attr.st_mode = mode;
     return 0;
 }
+
 
 /**
  * chown
@@ -409,11 +426,104 @@ static int fs_chown(const char * fname, uid_t uid, gid_t gid){
     return 0;
 }
 
+
 /**
- * register filesystem functions
+ * readlink
  */
-struct fuse_operations memfs_operations;
-#define regfun(fun) memfs_operations.fun = fs_##fun;
+static int fs_readlink(const char *path, char *buf, size_t size){
+    calllog(path,"ret",size);
+    auto file = manager.file_find(path).file;
+    if(file.isnull()) return -ENOENT;
+    if(file->is_symlink()) return -EACCES;
+
+    // read
+    off_t len = file->attr.st_size;
+    off_t max_size = len;
+    if(size>max_size){
+        memset(buf+max_size,0,size-max_size);
+        size = (size_t)max_size;
+    }
+    // [start,end]
+    size_t start_block = 0;
+    size_t end_block = (size-1)/block_size;
+
+    auto write_buf = (byte_t*)buf;
+    for(size_t i=start_block;i<=end_block;i++){
+        auto pb = file->block->get_block(i);
+        size_t n;
+        if(start_block==end_block){
+            n = size;
+        }else if(i==start_block){
+            n = block_size;
+        }else if(i==end_block){
+            n = size%block_size;
+        }else{
+            n = block_size;
+        }
+        memcpy(write_buf,pb,n);
+        write_buf += n;
+    }
+    return 0;
+}
+
+
+/**
+ * symlink
+ */
+static int fs_symlink(const char *dest, const char *symname){
+
+    calllog(dest,symname);
+
+    global_mtx.unlock();
+    auto r1 = fs_mknod(symname,0,0);
+    if(r1) return r1;
+
+    auto file = manager.file_find(symname).file;
+    assert(!file.isnull());
+    file->mk_symlink();
+
+    std::string sd = "/";
+    sd+=dest;
+
+    auto r2=fs_write(symname,sd.c_str(),sd.length(),0, nullptr);
+    if(r2<0) return r2;
+
+    return 0;
+}
+
+
+/**
+ * link
+ */
+static int fs_link(const char *dest, const char *linkname){
+
+    calllog(dest,linkname);
+
+    try {
+        manager.file_hardlink(dest,linkname);
+    }catch(std::bad_alloc&){
+        return -ENOSPC;
+    }
+
+    return 0;
+}
+
+
+/**
+ * utimens
+ */
+static int fs_utimens(const char *path, const struct timespec tv[2]){
+
+    calllog(path,"tv");
+
+    auto file = manager.file_find(path).file;
+    if(file.isnull()) return -ENOENT;
+    file->attr.st_atim = tv[0];
+    file->attr.st_mtim = tv[1];
+
+    return 0;
+}
+
 
 void signal_handle(int sig_num)
 {
@@ -430,12 +540,18 @@ int filler(void *buf, const char *name,const struct stat *stbuf, off_t off){
 }
 #endif
 
+/**
+ * register filesystem functions
+ */
+struct fuse_operations memfs_operations;
+#define regfun(fun) memfs_operations.fun = fs_##fun;
+
 int main(int argc, char* argv[]) {
 
     signal(SIGSEGV,signal_handle);
 
 #ifdef DEBUG
-    #include "test_code/test4.h"
+    #include "test_code/test2.h"
     return 0;
 #else
     regfun(init);
@@ -452,6 +568,10 @@ int main(int argc, char* argv[]) {
     regfun(rmdir);
     regfun(chmod);
     regfun(chown);
+    regfun(symlink);
+    regfun(readlink);
+    regfun(link);
+    regfun(utimens);
     logger.write("[main]");
     return fuse_main(argc, argv, &memfs_operations, nullptr);
 #endif

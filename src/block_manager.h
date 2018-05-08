@@ -25,7 +25,10 @@ const pointer<skipnode> p_skip_dummy[] = {
         {VADDR(0,block_meta,nodes[8])},
         {VADDR(0,block_meta,nodes[10])},
         {VADDR(0,block_meta,nodes[12])},
-        {VADDR(0,block_meta,nodes[14])}
+        {VADDR(0,block_meta,nodes[14])},
+        {VADDR(0,block_meta,nodes[16])},
+        {VADDR(0,block_meta,nodes[18])},
+        {VADDR(0,block_meta,nodes[20])}
 };
 
 static_assert(sizeof(skipnode)==2*sizeof(block_node));
@@ -205,7 +208,7 @@ class block_manager {
 
         // alloc new node
         pointer<skipnode> new_nodes[MAX_DEPTH];
-        long depth = 1 + random()%MAX_DEPTH;
+        long depth = block_skiplist::rand_depth();
         for(int i=0;i<depth;i++){
             new_nodes[i] = insert_skipnode(skipnode_proto);
             if(i) new_nodes[i]->down = new_nodes[i-1];

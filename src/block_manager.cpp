@@ -20,7 +20,7 @@ void block_manager::init_zero() {
     auto b_meta = driver.get_block<block_meta>(0);
 
     b_meta->index = 0;
-    b_meta->count = 20;
+    b_meta->count = 24;
 
     // blocknode dummy head
     for(int i=1;i<7;i++){
@@ -28,11 +28,11 @@ void block_manager::init_zero() {
     }
 
     // whole block
-    b_meta->nodes[17] = block_node {0,block_count,null_pointer};
-    p_free_head->next = pointer<block_node> {VADDR(0,block_meta,nodes[17])};
+    b_meta->nodes[22] = block_node {0,block_count,null_pointer};
+    p_free_head->next = pointer<block_node> {VADDR(0,block_meta,nodes[22])};
 
-    b_meta->nodes[18] = block_node {0,block_meta::blocks_in_meta,null_pointer};
-    p_meta_head->next = pointer<block_node> {VADDR(0,block_meta,nodes[18])};
+    b_meta->nodes[23] = block_node {0,block_meta::blocks_in_meta,null_pointer};
+    p_meta_head->next = pointer<block_node> {VADDR(0,block_meta,nodes[23])};
 
 
     logger.write("[init zero]","alloc");

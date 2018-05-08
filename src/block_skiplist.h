@@ -5,6 +5,7 @@
 #ifndef MEMFS_BLOCK_SKIPLIST_H
 #define MEMFS_BLOCK_SKIPLIST_H
 
+#include <cmath>
 #include "global.h"
 #include "block_string.h"
 #include "block_file.h"
@@ -12,7 +13,7 @@
 /**
  * skiplist
  */
-#define MAX_DEPTH 4
+#define MAX_DEPTH 8
 
 struct skipnode {
     pointer<skipnode> next;
@@ -96,6 +97,12 @@ struct block_skiplist {
         count++;
 
         return ret;
+    }
+
+    static size_t rand_depth(){
+        auto h = (size_t)log2((byte_t)random());
+        if(h>=MAX_DEPTH || h==0) return rand_depth();
+        return h;
     }
 
 };

@@ -19,9 +19,11 @@
   默认编译选项为 RELEASE 和 LOCK
 
   * ```
-    #define NAIVE			// NAIVE 模式静态分配空间
+    #define NAIVE			  // NAIVE 模式静态分配空间
     #define RELEASE			// RELEASE 模式不会产生 log
-    #define LOCK			// LOCK 模式有全局锁
+    #define LOCK		  	// LOCK 模式有全局锁
+    const size_t block_size = 4096;         // 4 k
+    const size_t block_count = 1024*256*4;  // 4 G
     ```
 
 * 运行环境： `linux` 操作系统 和 `fuse 2.6` 以上

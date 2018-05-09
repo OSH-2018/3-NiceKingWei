@@ -16,15 +16,15 @@
 
 * 编译选项在 compile_config.h 中
 
-  默认编译选项为 RELEASE 和 LOCK
+  默认编译选项为 RELEASE 和 LOCK。块大小默认 4K，文件系统大小默认 4G。
 
-  ```
-    #define NAIVE       // NAIVE 模式静态分配空间
-    #define RELEASE     // RELEASE 模式不会产生 log
-    #define LOCK        // LOCK 模式有全局锁
-    const size_t block_size = 4096;         // 4 k
-    const size_t block_count = 1024*256*4;  // 4 G
-  ```
+```
+#define NAIVE       // NAIVE 模式静态分配空间
+#define RELEASE     // RELEASE 模式不会产生 log
+#define LOCK        // LOCK 模式有全局锁
+const size_t block_size = 4096;         // 4 k
+const size_t block_count = 1024*256*4;  // 4 G
+```
 
 * 运行环境： `linux` 操作系统 和 `fuse 2.6` 以上
 
@@ -44,3 +44,7 @@
 * 不支持读写权限管理
 
 * 不支持用户权限管理
+
+  ```
+  
+  ```

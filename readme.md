@@ -18,7 +18,7 @@
 
   默认编译选项为 RELEASE 和 LOCK
 
-  * ```
+  ```
     #define NAIVE			  // NAIVE 模式静态分配空间
     #define RELEASE			// RELEASE 模式不会产生 log
     #define LOCK		  	// LOCK 模式有全局锁

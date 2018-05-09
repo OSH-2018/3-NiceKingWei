@@ -24,7 +24,7 @@
     #define LOCK        // LOCK 模式有全局锁
     const size_t block_size = 4096;         // 4 k
     const size_t block_count = 1024*256*4;  // 4 G
-    ```
+  ```
 
 * 运行环境： `linux` 操作系统 和 `fuse 2.6` 以上
 

@@ -31,7 +31,7 @@ const size_t block_count = 1024*256*4;  // 4 G
 * 测试
   > mkdir cmake-build-debug
   > 
-  > cd make-build-debug
+  > cd cmake-build-debug
   > 
   > cmake ../
   >

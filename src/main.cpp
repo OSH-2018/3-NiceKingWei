@@ -260,7 +260,7 @@ static int fs_write(const char *path, const char *buf, size_t size, off_t offset
         logger.write("[write]","failed");
         return -ENOSPC;
     }
-    file->attr.st_size = offset + size;
+    file->attr.st_size = std::max(file->attr.st_size,offset + size);
     file->attr.st_blocks = file->block->count();
     return (int)size;
 }

@@ -29,8 +29,13 @@ const size_t block_count = 1024*256*4;  // 4 G
 * 运行环境： `linux` 操作系统 和 `fuse 2.6` 以上
 
 * 测试
-
-  > cd test/
+  > mkdir cmake-build-debug
+  > 
+  > cd make-build-debug
+  > 
+  > cmake ../
+  >
+  > cd ../test/
   >
   > ./test.sh
   > 

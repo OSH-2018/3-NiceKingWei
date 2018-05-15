@@ -17,12 +17,14 @@
 #include "compile_config.h"
 
 #ifdef RELEASE
-struct log{
+class log{
+public:
     template<typename...T> int write(T...){return 0;}
     template<typename...T> int write_fun(T...){return 0;}
 };
 #else
-struct log{
+class log{
+public:
     std::ofstream fout;
 
     log(){

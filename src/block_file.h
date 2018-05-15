@@ -48,7 +48,7 @@ struct block_file {
     const static size_t blocks_in_file = 1;
 
     const static size_t max_file = block_size*blocks_in_file / sizeof(filenode) - 1;
-    filenode nodes[max_file] = {0};
+    filenode nodes[max_file];
 
     block_file* init(size_t index) {
         this->index = index;

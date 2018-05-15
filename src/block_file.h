@@ -67,6 +67,7 @@ struct block_file {
     }
 
 };
-static_assert(sizeof(block_file)<block_file::blocks_in_file*block_size);
+
+static_assert(sizeof(block_file)<block_file::blocks_in_file*block_size,"block size error");
 
 #endif //MEMFS_BLOCK_FILE_H

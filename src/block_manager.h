@@ -31,7 +31,8 @@ const pointer<skipnode> p_skip_dummy[] = {
         {VADDR(0,block_meta,nodes[20])}
 };
 
-static_assert(sizeof(skipnode)==2*sizeof(block_node));
+
+static_assert(sizeof(skipnode)==2*sizeof(block_node),"block size error");
 
 
 class block_manager {

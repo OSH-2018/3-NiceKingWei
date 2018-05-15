@@ -99,6 +99,8 @@ struct block_meta {
     }
 };
 
-static_assert(sizeof(block_meta)<block_size*block_meta::blocks_in_meta);
+
+
+static_assert(sizeof(block_meta)<block_size*block_meta::blocks_in_meta,"block size error");
 
 #endif //MEMFS_BLOCK_META_H

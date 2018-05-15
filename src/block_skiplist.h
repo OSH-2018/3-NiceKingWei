@@ -107,6 +107,7 @@ struct block_skiplist {
 
 };
 
+
 static_assert(sizeof(block_skiplist)<block_size*block_skiplist::blocks_in_skiplist,"block size error");
 
 

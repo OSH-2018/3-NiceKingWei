@@ -17,17 +17,17 @@
 #include "compile_config.h"
 
 #ifdef RELEASE
-class log{
+class log_class{
 public:
     template<typename...T> int write(T...){return 0;}
     template<typename...T> int write_fun(T...){return 0;}
 };
 #else
-class log{
+class log_class{
 public:
     std::ofstream fout;
 
-    log(){
+    log_class(){
         fout.open("memfs.log");
     }
 
@@ -93,7 +93,7 @@ public:
     }
 };
 #endif
-extern log logger;
+extern log_class logger;
 
 #define calllog(...) global_lock QAQ;logger.write_fun(__FUNCTION__,__VA_ARGS__)
 

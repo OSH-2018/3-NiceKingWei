@@ -12,7 +12,7 @@
 
 * 能记录日志（是文件系统服务程序的日志，不保存在文件系统镜像中）
 
-* 编译环境：支持 c++11 的 c++ 编译器，cmake 3.10 以上
+* 编译环境：gcc 7.0 以上，cmake 3.10 以上, pkg-config
 
 * 编译选项在 compile_config.h 中
 
@@ -28,7 +28,7 @@ const size_t block_count = 1024*256*4;  // 4 G
 
 * 运行环境： `linux` 操作系统 和 `fuse 2.6` 以上
 
-* 实测环境： ubuntu 18.04, gcc 7.3.0, fuse 2.9.7, cmake 3.10.2
+* 实测环境： ubuntu 18.04, gcc 7.3.0, fuse 2.9.7, cmake 3.10.2, pkg-config 0.29.1
 
 * 测试
   > mkdir cmake-build-debug

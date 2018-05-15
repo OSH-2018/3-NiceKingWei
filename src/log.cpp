@@ -4,4 +4,4 @@
 
 #include "log.h"
 
-log logger;
+log_class logger;

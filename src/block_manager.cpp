@@ -281,7 +281,7 @@ bool block_manager::dir_create(const char* s){
  */
 bool block_manager::file_create(const char* s){
 
-
+    logger.write("at","file_create1");
     std::string filename(s);
 
     // filter
@@ -289,6 +289,8 @@ bool block_manager::file_create(const char* s){
     auto s_parent = utils::path_get_parent(filename);
     auto f_parent = manager.file_find(s_parent.c_str()).file;
     if(f_parent.isnull()) return false;
+
+    logger.write("at","file_create2");
 
     struct stat new_file = {0};
     new_file.st_uid = getuid();

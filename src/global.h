@@ -215,7 +215,7 @@ struct utils{
                 if(s[i++]!='/') return false;
                 if(i>=s.size()) return false;
                 while(i<s.size() && s[i]!='/'){
-                    if(bad_words.find(s[i])== bad_words.npos) return false;
+                    if(bad_words.find(s[i]) != std::string::npos) return false;
                     i++;
                 }
             }

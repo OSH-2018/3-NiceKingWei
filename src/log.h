@@ -7,7 +7,7 @@
 
 //#define DEBUG
 //#define DUMP
-//#define VERBOSE
+#define VERBOSE
 
 
 

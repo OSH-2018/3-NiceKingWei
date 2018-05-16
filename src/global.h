@@ -200,8 +200,15 @@ struct utils{
     }
 
     inline static bool path_is_valid(const std::string& s){
+        logger.write("[at]","path_is_valid");
         const char* reg = R"(^(\/[^\/ ][^\\/:"*?<>|]*)+$)";
-        return std::regex_match(s,std::regex(reg));
+        bool result=true;
+        try{
+            result = std::regex_match(s,std::regex(reg));
+        }catch(std::exception&){
+            logger.write("[err]","ne");
+        }
+        return result;
     }
 };
 

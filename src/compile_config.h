@@ -9,7 +9,7 @@
 
 //#define NAIVE
 //#define RELEASE
-//#define LOCK
+#define LOCK
 const size_t block_size = 4096;         // 4 k
 const size_t block_count = 1024*256*4;  // 4 G
 

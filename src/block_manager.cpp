@@ -77,6 +77,7 @@ void block_manager::init_zero() {
 skipnode block_manager::file_find(const char *filename) {
 
     auto failed = skipnode {null_pointer,null_pointer,null_pointer,null_pointer};
+    logger.write("[at]","file_find1");
 
     // (minimal,maximal]
     auto p_int_l = p_skip_dummy[MAX_DEPTH-1];
@@ -108,6 +109,7 @@ skipnode block_manager::file_find(const char *filename) {
         // down
         p_int_l = p_int_l->down;
     }
+    logger.write("[at]","file_find2");
 }
 
 

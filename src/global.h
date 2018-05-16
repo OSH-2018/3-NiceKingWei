@@ -194,7 +194,7 @@ struct pointer {
 
 struct utils{
 
-    static const char* reg = R"(^(\/[^\/ ][^\\\/:"\*?<>\|]*)+$)";
+    static constexpr const char* reg = R"(^(\/[^\/ ][^\\\/:"\*?<>\|]*)+$)";
 
     inline static std::string path_get_parent(const std::string& s){
         std::string ss = s;

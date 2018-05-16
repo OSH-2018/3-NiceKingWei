@@ -538,6 +538,7 @@ int main(int argc, char* argv[]) {
 
     signal(SIGSEGV,signal_handle);
 
+    logger.write("[regex]",R"(^(\/[^\/ ][^\\/:"*?<>|]*)+$)");
 #ifdef DEBUG
     #include "test_code/test7.h"
     return 0;

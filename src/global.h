@@ -193,6 +193,9 @@ struct pointer {
 
 
 struct utils{
+
+    static const char* reg = R"(^(\/[^\/ ][^\\\/:"\*?<>\|]*)+$)";
+
     inline static std::string path_get_parent(const std::string& s){
         std::string ss = s;
         while(!ss.empty() && ss.back()!='/') ss.pop_back();
@@ -201,12 +204,10 @@ struct utils{
     }
 
     inline static bool path_is_valid(const std::string& s){
-        const char* reg = R"(^(\/[^\/ ][^\\/:"*?<>|]*)+$)";
         bool result = true;
         try{
             result = std::regex_match(s,std::regex(reg));
         }catch(std::regex_error&){
-            logger.write("[error]","regex_error");
         }
         return result;
     }

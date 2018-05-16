@@ -12,7 +12,7 @@ mkdir mnt1 mnt2
 cp mnt1/result.txt out1.std     #
 cp mnt2/result.txt out1.my      #
 diff out1.std out1.my           #
-sudo umount mnt2
+fusermount -u mnt2
 
 echo "test2"
 rm -rf mnt*
@@ -23,7 +23,7 @@ mkdir mnt1 mnt2
 cp mnt1/result.txt out2.std
 cp mnt2/result.txt out2.my
 diff out2.std out2.my
-sudo umount mnt2
+fusermount -u mnt2
 
 echo "test3"                    #
 rm -rf mnt*
@@ -31,4 +31,4 @@ mkdir mnt1 mnt2
 ./memfs mnt2
 ../test/test3.sh mnt1           #
 ../test/test3.sh mnt2           #
-sudo umount mnt2
+fusermount -u mnt2

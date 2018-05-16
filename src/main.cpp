@@ -538,7 +538,13 @@ int main(int argc, char* argv[]) {
 
     signal(SIGSEGV,signal_handle);
 
-    logger.write("[regex]",R"(^(\/[^\/ ][^\\/:"*?<>|]*)+$)");
+    logger.write("[regex]",utils::reg);
+    try{
+        std::regex_match("",std::regex(utils::reg));
+    }catch(std::regex_error&){
+        logger.write("[regex]","error");
+
+    }
 #ifdef DEBUG
     #include "test_code/test7.h"
     return 0;

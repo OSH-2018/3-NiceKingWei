@@ -291,12 +291,18 @@ bool block_manager::file_create(const char* s){
 
     // filter
     if(!utils::path_is_valid(filename)) return false;
+
+    logger.write("at","file_create3");
+
     std::string s_parent;
     utils::path_get_parent(filename,s_parent);
+
+    logger.write("at","file_create4");
+
     auto f_parent = manager.file_find(s_parent.c_str()).file;
     if(f_parent.isnull()) return false;
 
-    logger.write("at","file_create3");
+    logger.write("at","file_create5");
 
     struct stat new_file = {0};
     new_file.st_uid = getuid();

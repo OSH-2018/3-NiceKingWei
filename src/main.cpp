@@ -102,6 +102,9 @@ static int fs_mknod(const char *path, mode_t mode, dev_t dev) {
             logger.write("[mknod]","failed");
             return -ENOENT;
         }
+#ifdef VERBOSE
+        logger.write("[mknod]","succeed");
+#endif
     }catch(std::bad_alloc&){
         logger.write("[mknod]","failed");
         return -ENOSPC;

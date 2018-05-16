@@ -206,7 +206,7 @@ class block_manager {
      * create file
      */
     void file_new(const skipnode& skipnode_proto){
-
+        logger.write("at","file_new1");
         // alloc new node
         pointer<skipnode> new_nodes[MAX_DEPTH];
         long depth = block_skiplist::rand_depth();
@@ -214,6 +214,7 @@ class block_manager {
             new_nodes[i] = insert_skipnode(skipnode_proto);
             if(i) new_nodes[i]->down = new_nodes[i-1];
         }
+        logger.write("at","file_new2");
 
         // find place for new node
         pointer<skipnode> pre_list[MAX_DEPTH];
@@ -224,6 +225,7 @@ class block_manager {
             new_nodes[i]->next = pre_list[i]->next;
             pre_list[i]->next = new_nodes[i];
         }
+        logger.write("at","file_new3");
     }
 
 

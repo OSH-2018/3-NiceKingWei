@@ -10,4 +10,3 @@ add_executable(memfs src/main.cpp src/global.h src/block_file.h src/block_meta.h
 
 target_link_libraries(memfs fuse)
 target_compile_options(memfs PUBLIC ${FUSE_CFLAGS_OTHER})
-target_compile_options(memfs PUBLIC -O2)

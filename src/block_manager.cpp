@@ -249,7 +249,8 @@ bool block_manager::dir_create(const char* s){
     // filter
     if(filename!="/"){
         if(!utils::path_is_valid(filename)) return false;
-        auto s_parent = utils::path_get_parent(filename);
+        std::string s_parent;
+        utils::path_get_parent(filename,s_parent);
         auto f_parent = manager.file_find(s_parent.c_str()).file;
         if(f_parent.isnull()) return false;
     }
@@ -284,9 +285,12 @@ bool block_manager::file_create(const char* s){
     logger.write("at","file_create1");
     std::string filename(s);
 
+    logger.write("at","file_create2");
+
     // filter
     if(!utils::path_is_valid(filename)) return false;
-    auto s_parent = utils::path_get_parent(filename);
+    std::string s_parent;
+    utils::path_get_parent(filename,s_parent);
     auto f_parent = manager.file_find(s_parent.c_str()).file;
     if(f_parent.isnull()) return false;
 

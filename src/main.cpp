@@ -69,7 +69,8 @@ static int fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 
     filler(buf, ".", &dir->attr, 0);
 
-    auto path_parent = utils::path_get_parent(path);
+    std::string path_parent;
+    utils::path_get_parent(path,path_parent);
     if(!path_parent.empty()){
         auto parent = manager.file_find(path_parent.c_str());
         assert(!parent.file.isnull());

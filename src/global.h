@@ -193,11 +193,10 @@ struct pointer {
 
 
 struct utils{
-    inline static std::string path_get_parent(const std::string& s){
-        std::string ss = s;
-        while(!ss.empty() && ss.back()!='/') ss.pop_back();
-        if(ss.length()>1) ss.pop_back();
-        return ss;
+    inline static void path_get_parent(const std::string& s,std::string& parent){
+        parent = s;
+        while(!parent.empty() && parent.back()!='/') parent.pop_back();
+        if(parent.length()>1) parent.pop_back();
     }
 
     inline static bool path_is_valid(const std::string& s){

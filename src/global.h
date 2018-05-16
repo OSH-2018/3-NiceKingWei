@@ -208,6 +208,17 @@ struct utils{
         try{
             result = std::regex_match(s,std::regex(reg));
         }catch(std::regex_error&){
+            if(s.empty()) return false;
+            int i=0;
+            std::string bad_words = "\\/:\"*?<>|";
+            while(i<s.size()){
+                if(s[i++]!='/') return false;
+                if(i>=s.size()) return false;
+                while(i<s.size() && s[i]!='/'){
+                    if(bad_words.find(s[i])== bad_words.npos) return false;
+                    i++;
+                }
+            }
         }
         return result;
     }
